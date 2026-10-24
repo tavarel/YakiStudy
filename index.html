@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>三輪 · Cardápio JP</title>
+  <meta name="description" content="Flashcards do cardápio do やきやき三輪: kanji, leituras, ingredientes e links de estudo.">
+  <meta name="theme-color" content="#b3261e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-tab="study">
+  <header id="top">
+    <div class="brand"><span class="logo" aria-hidden="true"></span><span>三輪 <small>cardápio JP</small></span></div>
+    <div id="statline"></div>
+  </header>
+
+  <main id="view" aria-live="polite"></main>
+
+  <nav id="tabs" aria-label="Seções">
+    <button data-act="tab" data-tab="study"><span>🎴</span>Estudar</button>
+    <button data-act="tab" data-tab="menu"><span>📋</span>Cardápio</button>
+    <button data-act="tab" data-tab="kanji"><span>漢</span>Kanji</button>
+    <button data-act="tab" data-tab="quiz"><span>❓</span>Quiz</button>
+    <button data-act="tab" data-tab="more"><span>⚙️</span>Mais</button>
+  </nav>
+
+  <div id="sheet" hidden></div>
+  <div id="toast" role="status"></div>
+
+  <noscript>Este app precisa de JavaScript.</noscript>
+  <script src="data.js"></script>
+  <script src="kanji.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
