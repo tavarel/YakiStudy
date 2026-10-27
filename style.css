@@ -39,7 +39,7 @@ ruby rt{font-size:.5em;font-weight:400;color:var(--muted);letter-spacing:.02em}
 #tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 #tabs button{flex:1;max-width:150px;background:none;border:0;padding:8px 2px 9px;font-size:.72rem;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
 #tabs button span{font-size:1.25rem;line-height:1.1;font-family:var(--jp)}
-body[data-tab="study"] #tabs [data-tab="study"],body[data-tab="menu"] #tabs [data-tab="menu"],body[data-tab="kanji"] #tabs [data-tab="kanji"],body[data-tab="quiz"] #tabs [data-tab="quiz"],body[data-tab="more"] #tabs [data-tab="more"]{color:var(--accent);font-weight:700}
+body[data-tab="study"] #tabs [data-tab="study"],body[data-tab="prep"] #tabs [data-tab="prep"],body[data-tab="menu"] #tabs [data-tab="menu"],body[data-tab="kanji"] #tabs [data-tab="kanji"],body[data-tab="quiz"] #tabs [data-tab="quiz"],body[data-tab="more"] #tabs [data-tab="more"]{color:var(--accent);font-weight:700}
 
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);margin:10px 0}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-weight:600}
@@ -129,3 +129,45 @@ details summary{cursor:pointer;font-weight:600}
 ul.tight{margin:.3rem 0 .3rem 1.1rem;padding:0}
 #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:#222;color:#fff;padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:90vw;text-align:center}
 #toast.on{opacity:.95;transform:translateX(-50%)}
+
+/* pitch accent */
+.pitchbox{text-align:center;margin:2px 0 4px}
+.pitch{display:inline-flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;padding:4px 2px}
+.ap{display:inline-flex;align-items:stretch}
+.pm{font-family:var(--jp);font-size:1.05rem;line-height:1.25;padding:3px 1px 2px;min-width:.95em;text-align:center;border:0 solid var(--accent)}
+.pm.H{border-top-width:2px}
+.pm.L{border-bottom-width:2px}
+.pm.ch{border-left-width:2px}
+.pm.dn{min-width:7px;width:7px;padding:0;border-left-width:2px;border-bottom-width:2px}
+.pitch.big .pm{font-size:1.4rem}
+.pitch-src{font-size:.7rem;color:var(--muted)}
+
+/* vídeos */
+.vlist{display:grid;gap:6px}
+.vrow{display:block;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:.92rem}
+.vline{display:flex;align-items:center;gap:6px;margin:4px 0}
+.vline a{flex:1;font-size:.92rem;color:var(--ink);text-decoration:none;border-bottom:1px dashed var(--line);padding:6px 0}
+.vline .ck{width:auto;margin:0}
+
+/* cozinha */
+.banner{display:block;width:100%;text-align:left;margin:6px 0 4px;padding:12px 14px;border-radius:14px;border:1px solid var(--accent);background:var(--soft);color:var(--ink);font-size:.95rem}
+.prep-hero{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.bigday{font-size:2.8rem;font-weight:800;color:var(--accent);line-height:1;font-family:var(--jp)}
+.prep-pg{flex-basis:100%;display:flex;align-items:center;gap:10px}
+.prep-pg .bar{flex:1}
+.plan{display:grid;gap:6px}
+.pday{display:grid;grid-template-columns:86px 1fr;gap:8px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.pday.today{border-color:var(--accent);box-shadow:0 0 0 2px rgba(179,38,30,.15)}
+.pday.past{opacity:.65}
+.pd{font-size:.82rem;color:var(--muted)}
+.mod{background:var(--panel)}
+.mod summary{padding:4px 0}
+.decks,.drills{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.ck{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;padding:7px 0;font-size:.93rem;color:var(--ink)}
+.ck .box{flex:0 0 22px;height:22px;border:2px solid var(--line);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent-ink);background:var(--panel)}
+.ck.on .box{background:var(--good);border-color:var(--good);color:#fff}
+.ck.on span:last-child{color:var(--muted);text-decoration:line-through}
+.seq{margin:6px 0 10px 1.2rem;padding:0}
+.seq li{margin:6px 0}
+.timer{font-size:4rem;font-weight:800;font-variant-numeric:tabular-nums;margin:10px 0;font-family:system-ui,sans-serif}
+#tabs button{max-width:130px;font-size:.68rem}

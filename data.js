@@ -6,6 +6,11 @@
    ============================================================ */
 (function () {
   const CATS = [
+    { id: 'trabalho', name: 'Frases do trabalho (equipe)', emoji: '🗣️', kind: 'vocab' },
+    { id: 'atendimento', name: 'Frases de atendimento', emoji: '🙇', kind: 'vocab' },
+    { id: 'cortes', name: 'Cortes (切り方)', emoji: '🔪', kind: 'vocab' },
+    { id: 'verbos', name: 'Verbos e termos de cozinha', emoji: '🍳', kind: 'vocab' },
+    { id: 'utensilios', name: 'Utensílios', emoji: '🥄', kind: 'vocab' },
     { id: 'ingredientes', name: 'Ingredientes', emoji: '🧄', kind: 'vocab' },
     { id: 'palavras', name: 'Palavras do cardápio', emoji: '📖', kind: 'vocab' },
     { id: 'cursos', name: 'Cursos (set menu)', emoji: '🍱', kind: 'food' },
@@ -26,8 +31,7 @@
     { id: 'coquetel', name: 'Coquetéis / Hai', emoji: '🍸', kind: 'drink' },
     { id: 'soft', name: 'Sem álcool', emoji: '🥤', kind: 'drink' },
     { id: 'vinho', name: 'Vinhos (garrafa)', emoji: '🍷', kind: 'drink' },
-    { id: 'champagne', name: 'Champagne (garrafa)', emoji: '🍾', kind: 'drink' },
-    { id: 'atendimento', name: 'Frases de atendimento', emoji: '🙇', kind: 'vocab' }
+    { id: 'champagne', name: 'Champagne (garrafa)', emoji: '🍾', kind: 'drink' }
   ];
 
   /* ---------- ingredientes: chave: [japonês, português, wiki?] ---------- */
@@ -325,6 +329,217 @@
   A('champagne', 'ペリエジュエベルエポック', 'Perrier-Jouët Belle Epoque', { en: 'Perrier Jouët Belle Epoque', p: [65000, 71500], w: ['en:Perrier-Jouët'] });
   A('champagne', 'クリュッググランドキュヴェ', 'Krug Grande Cuvée Brut', { en: 'Krug Grande Cuvée Brut', p: [88000, 96800], w: ['en:Krug (champagne)'] });
 
+  /* ============================================================
+     COZINHA E TRABALHO (extra, não está no cardápio)
+     vid: chaves de VIDEOS (vídeos escolhidos); yt: busca no YouTube
+     ============================================================ */
+  const YT = id => 'https://www.youtube.com/watch?v=' + id;
+  const VIDEOS = {
+    cabbage: ['Shredded Cabbage By a Japanese Chef (repolho em 千切り)', YT('s0yuSX9q62Y')],
+    lefthand: ['左手の使い方！キャベツの千切り編 (a mão que segura)', YT('uVEhJ_rtRgs')],
+    hotelknife: ['元高級ホテル料理人：包丁の持ち方・立ち方・基本の切り方', YT('Ev8s7mamvvk')],
+    washoku: ['プロの和食料理人：包丁の持ち方・使い方', YT('UEwALmzppwg')],
+    stance: ['包丁の持ち方と立ち方：切るときの立ち方', YT('HEnIWjY6Joc')],
+    aonegi: ['料理の基本【青ねぎの小口切り】', YT('ivyAZTTC6bs')],
+    naganegi: ['長ねぎの小口切り（プロの板前）', YT('L_hFuO_U0tU')],
+    nanamegiri: ['長ネギ ぶつ切り＆斜め切り (N.D.Kitchen Basic)', YT('v6F5jTlJ8Is')],
+    negimijin: ['長ネギのみじん切り (N.D.Kitchen Basic)', YT('SejPIPQLqp8')],
+    shiraga: ['白髪ネギの切り方 (N.D.Kitchen Basic)', YT('1xpAqGW2CjE')],
+    tamanegi3: ['玉ねぎの切り方3種：スライス・みじん切り・くし切り', YT('ORoxivCfdAI')],
+    tamanegiKaku: ['玉ねぎ 角切り・乱切り・輪切り (N.D.Kitchen Basic)', YT('xvkeuLQJ9AQ')],
+    sainome: ['きゅうりのさいの目切り (N.D.Kitchen Basic)', YT('tLZfCLOQqXA')],
+    ninniku: ['にんにくの薄切り', YT('qC-8FU3hJjc')],
+    salt1: ['「少々」と「ひとつまみ」の量を実際にはかってみた', YT('0ZytCuJ73d8')],
+    salt2: ['「塩分量の法則」で味を一回で決める', YT('FkLGZWnaqpM')],
+    otafuku: ['オタフク：関西お好み焼を美味しく焼くコツ', YT('sD2q69aoR0s')],
+    oko35: ['大阪お好み焼き：この道35年のプロの焼き方', YT('NNg45k5Gb1Q')],
+    flip: ['お好み焼のひっくり返し方（関西編）', YT('J1PL5PuMCXk')],
+    negiyaki1: ['関西風「ねぎ焼き」の作り方', YT('4yPg8DqTOsU')],
+    negiyaki2: ['ネギ焼き 大阪下町風', YT('tn7smtRFZYc')],
+    soba8: ['プロが教える焼きそば（鉄板焼き8年のプロ）', YT('3qelwsG0Ff4')],
+    sobaChuka: ['麺を焼くから焼きそば（中華の巨匠・菰田欣也）', YT('IXcHDUcyb5A')],
+    temp: ['鉄板の温度の見方 (short)', YT('jjTuQ1vtmeY')],
+    clean: ['焼肉屋の裏側：汚れた鉄板を磨く作業', YT('P6mbijPBSII')],
+    garlic: ['シェフが教える鉄板焼調理法【ガーリックチップ編】', YT('Ga0RqtESZB0')],
+    sirloin: ['シェフが教える鉄板焼調理法【サーロイン編】', YT('OAUCHIwLzGw')],
+    wagyu: ['鉄板焼のプロ：黒毛和牛サーロインの焼き方', YT('YOwOwTzwFk4')],
+    doneness: ['ANAホテル料理長：レア・ミディアムレア・ミディアムの違い', YT('ovFddPavAAI')],
+    horumon: ['プロが教えるホルモン鉄板焼き', YT('S8KG3kiJrs8')],
+    ebi: ['えびの下処理：背わた取り・殻むき', YT('Jx0676oABPE')],
+    ebi2: ['赤エビ（頭つき）の殻むき・背わた取り', YT('b8IS-Lf8rtc')],
+    ika: ['イカの捌き方（プロの板前）', YT('UvPVUXDnNFM')],
+    hotate: ['ホタテ貝のさばき方', YT('dSC2ufRUTS4')],
+    asari: ['あさりの砂抜き：プロの時短術', YT('D1cAW0lU_8Y')],
+    kaki: ['牡蠣の洗い方3パターン', YT('K12bBaDHwEs')],
+    beer: ['サッポロ生ビール黒ラベル ３度注ぎ', YT('q4_TLa9L71s')],
+    champ: ['シャンパンの開け方【エノテカ・ソムリエ監修】', YT('CQHTNOTz8ow')],
+    champ2: ['サントリー：スパークリングワイン（シャンパン）の開け方', YT('9XJ7KM7Yvt0')],
+    sommelier: ['ソムリエナイフの使い方とワインの開け方', YT('6kFhM9JAq2U')],
+    highball: ['サントリー：こだわりのつくり方講座（ハイボール編）', YT('NuKyNawddro')],
+    hands: ['食品取扱者向け：食中毒予防のための正しい手洗い', YT('YOzZj1SeEo8')]
+  };
+  /* vídeos sugeridos por categoria do cardápio */
+  const CATVID = {
+    okonomiyaki: ['otafuku', 'oko35', 'flip'], negiyaki: ['negiyaki1', 'negiyaki2', 'aonegi'], modan: ['oko35', 'flip'],
+    yakisoba: ['soba8', 'sobaChuka'], horumon: ['horumon'], steak: ['wagyu', 'doneness', 'garlic'], korokoro: ['sirloin', 'tamanegiKaku'],
+    mar: ['ebi', 'ika', 'hotate', 'kaki'], legumes: ['garlic', 'tamanegi3'], cerveja: ['beer'], champagne: ['champ', 'champ2'],
+    vinho: ['sommelier'], coquetel: ['highball'], sour: ['highball']
+  };
+
+  /* ---------- frases do trabalho (cozinha / equipe) ---------- */
+  A('trabalho', 'おはようございます', '"bom dia": cumprimento ao chegar para o turno (vale até de noite)', { note: 'Em restaurantes é o cumprimento padrão de entrada, a qualquer hora.' });
+  A('trabalho', 'お{疲|つか}れ{様|さま}です', '"bom trabalho": cumprimento entre colegas (ao chegar, ao cruzar, ao sair)');
+  A('trabalho', '{本日|ほんじつ}からお{世話|せわ}になります', '"a partir de hoje conto com vocês": frase do primeiro dia', { note: 'Depois diga seu nome e よろしくお願いいたします.' });
+  A('trabalho', 'よろしくお{願|ねが}いいたします', 'conto com você / por favor (formal)');
+  A('trabalho', 'お{先|さき}に{失礼|しつれい}します', 'com licença, vou indo (ao sair antes dos colegas)');
+  A('trabalho', '{後|うし}ろ{通|とお}ります', 'passando atrás de você', { note: 'Diga SEMPRE que passar atrás de alguém: na cozinha há facas e coisas quentes.' });
+  A('trabalho', '{後|うし}ろ{失礼|しつれい}します', 'com licença, passando atrás (mais educado)');
+  A('trabalho', '{熱|あつ}いの{通|とお}ります', 'passando com algo quente!');
+  A('trabalho', 'オーダー{入|はい}ります', 'entrou pedido', { note: 'Depois vêm a mesa e os itens: ３番テーブル、豚玉ひとつ.' });
+  A('trabalho', '〜{上|あ}がりました', '~ ficou pronto (para levar à mesa)', { note: 'Ex.: 豚玉上がりました！ Também 〜上がります.' });
+  A('trabalho', '〜お{願|ねが}いします', '~ por favor (ao passar um pedido ou pedir algo)');
+  A('trabalho', '{何番|なんばん}テーブルですか', 'qual é a mesa (número)?', { note: '３番テーブル = mesa 3.' });
+  A('trabalho', '{伝票|でんぴょう}', 'comanda / nota do pedido');
+  A('trabalho', '{品切|しなぎ}れ', 'esgotado (acabou o item)', { note: '〜切れです = acabou ~. Ex.: キャベツ切れです.' });
+  A('trabalho', '{仕込|しこ}み', 'pré-preparo (cortar, limpar e deixar tudo pronto antes do serviço)');
+  A('trabalho', '{洗|あら}い{物|もの}', 'louça para lavar');
+  A('trabalho', 'バッシング', 'retirar a louça suja das mesas (jargão de restaurante)');
+  A('trabalho', 'まかない', 'refeição dos funcionários');
+  A('trabalho', '{休憩|きゅうけい}', 'intervalo / pausa');
+  A('trabalho', 'シフト', 'escala de turnos', { note: 'シフトを作る = montar a escala (como na mensagem do LINE).' });
+  A('trabalho', '{出勤|しゅっきん}・{退勤|たいきん}', 'entrada · saída do turno', { note: 'タイムカードを押す = bater o ponto.' });
+  A('trabalho', '{遅刻|ちこく}', 'atraso', { note: 'Se for se atrasar, avise ANTES do horário.' });
+  A('trabalho', 'ホール・キッチン', 'salão · cozinha');
+  A('trabalho', '{店長|てんちょう}', 'gerente da loja');
+  A('trabalho', '{先輩|せんぱい}', 'colega mais antigo (veterano)');
+  A('trabalho', '{確認|かくにん}します', 'vou confirmar');
+  A('trabalho', 'もう{一度|いちど}お{願|ねが}いします', 'mais uma vez, por favor');
+  A('trabalho', 'ゆっくりお{願|ねが}いします', 'mais devagar, por favor');
+  A('trabalho', 'すみません、{教|おし}えていただけますか', 'com licença, poderia me ensinar?');
+  A('trabalho', 'これはどこに{置|お}けばいいですか', 'onde coloco isto?');
+  A('trabalho', '{次|つぎ}は{何|なに}をすればいいですか', 'o que faço agora?');
+  A('trabalho', '{終|お}わりました', 'terminei');
+  A('trabalho', '{手|て}が{空|あ}きました', 'fiquei livre (posso ajudar em algo)');
+  A('trabalho', '{承知|しょうち}しました', 'entendido (formal, para o chefe)');
+  A('trabalho', '{了解|りょうかい}です', 'entendido (entre colegas)', { note: 'Para o chefe prefira 承知しました ou かしこまりました.' });
+  A('trabalho', '{申|もう}し{訳|わけ}ありません、{間違|まちが}えました', 'desculpe, eu errei');
+  A('trabalho', '{気|き}をつけます', 'vou tomar cuidado');
+  A('trabalho', 'メモしてもいいですか', 'posso anotar?', { note: 'Levar caderninho e caneta no primeiro dia é muito bem-visto.' });
+  A('trabalho', '{初日|しょにち}の{持|も}ち{物|もの}と{服装|ふくそう}を{教|おし}えていただけますか', 'poderia me dizer o que levar e que roupa usar no primeiro dia?', { note: 'Boa pergunta para mandar no LINE antes do dia 02.' });
+  A('trabalho', 'お{客様|きゃくさま}', 'cliente (forma respeitosa)');
+  A('trabalho', '{日本語|にほんご}はまだ{勉強中|べんきょうちゅう}ですが、{精一杯|せいいっぱい}{頑張|がんば}ります', 'meu japonês ainda está em estudo, mas vou me esforçar ao máximo', { note: 'Ótimo para a autoapresentação do primeiro dia, depois de 本日からお世話になります、〇〇と申します.' });
+
+  /* ---------- cortes ---------- */
+  A('cortes', '{千切|せんぎ}り', 'tiras bem finas (julienne)', { note: 'O corte nº 1 da casa: repolho (キャベツの千切り). A lâmina desliza para a frente; mão em 猫の手.', vid: ['cabbage', 'lefthand'], yt: 'キャベツ 千切り プロ' });
+  A('cortes', '{細切|ほそぎ}り', 'tiras finas (um pouco mais grossas que o 千切り)', { yt: '細切り 切り方' });
+  A('cortes', '{小口切|こぐちぎ}り', 'rodelas finas de algo comprido (cebolinha, pepino)', { note: 'Essencial para o negiyaki (muita cebolinha verde). As rodelas devem sair soltas, não grudadas.', vid: ['aonegi', 'naganegi'], yt: 'ねぎ 小口切り' });
+  A('cortes', '{斜|なな}め{切|ぎ}り', 'corte na diagonal', { note: 'Cebolinha grossa (長ネギ), aspargo.', vid: ['nanamegiri'], yt: '斜め切り ねぎ' });
+  A('cortes', 'みじん{切|ぎ}り', 'picado bem fino', { note: 'Alho, cebola (molho tártaro caseiro).', vid: ['hotelknife', 'negimijin'], yt: 'みじん切り 玉ねぎ プロ' });
+  A('cortes', '{粗|あら}みじん', 'picado grosso (pedacinhos, não finíssimo)', { note: 'Em muitas casas de Kansai o repolho do okonomiyaki vai picado assim; confirme o tamanho que a casa usa.', yt: '粗みじん切り キャベツ お好み焼き' });
+  A('cortes', '{角切|かくぎ}り', 'cubos (1–2 cm)', { note: 'Korokoro-yaki (carne e legumes em cubos), batata.', vid: ['tamanegiKaku'], yt: '角切り 切り方' });
+  A('cortes', 'さいの{目切|めぎ}り', 'cubinhos (~1 cm, "dado")', { note: 'さいの目 = face do dado. Tofu, pepino.', vid: ['sainome'], yt: 'さいの目切り' });
+  A('cortes', '{薄切|うすぎ}り', 'fatias finas', { note: 'Alho para as lascas crocantes (カリカリにんにく).', vid: ['ninniku'], yt: 'にんにく 薄切り' });
+  A('cortes', 'スライス', 'fatiar fino (palavra inglesa usada como 薄切り)', { note: 'A cebola doce de Awaji vai em fatias finas.', vid: ['tamanegi3'], yt: '玉ねぎ スライス 切り方' });
+  A('cortes', '{輪切|わぎ}り', 'rodelas', { note: 'Renkon, abobrinha, berinjela, limão.', yt: '輪切り 切り方' });
+  A('cortes', '{半月切|はんげつぎ}り', 'meia-lua (rodela cortada ao meio)', { yt: '半月切り' });
+  A('cortes', 'いちょう{切|ぎ}り', 'quarto de lua (formato da folha de ginkgo)', { yt: 'いちょう切り' });
+  A('cortes', 'くし{形切|がたぎ}り', 'gomos (como gomo de laranja)', { note: 'Tomate, cebola, limão. Também se diz くし切り.', vid: ['tamanegi3'], yt: 'くし形切り' });
+  A('cortes', '{乱切|らんぎ}り', 'corte irregular, girando o legume a cada corte', { note: 'Mais superfície: cozinha e pega tempero melhor.', vid: ['tamanegiKaku'], yt: '乱切り' });
+  A('cortes', 'ざく{切|ぎ}り', 'pedaços grandes, corte rápido e grosso', { note: 'Repolho para yakisoba, nira.', yt: 'ざく切り キャベツ' });
+  A('cortes', 'ぶつ{切|ぎ}り', 'pedaços grossos (corte tosco)', { note: 'タコのぶつ切り = polvo em pedaços.', vid: ['nanamegiri'], yt: 'ぶつ切り' });
+  A('cortes', '{一口大|ひとくちだい}', 'tamanho de uma mordida', { note: 'Instrução comum: 一口大に切る.' });
+  A('cortes', '{短冊切|たんざくぎ}り', 'retângulos finos e chatos (como tiras de papel)', { yt: '短冊切り' });
+  A('cortes', '{白髪|しらが}ネギ', 'cebolinha em fios finíssimos (enfeite)', { vid: ['shiraga'], yt: '白髪ねぎ 切り方' });
+  A('cortes', '{筋切|すじぎ}り', 'cortar os nervos da carne (para não encolher na chapa)', { note: 'Feito nos steaks antes de grelhar.', yt: 'ステーキ 筋切り' });
+  A('cortes', '{隠|かく}し{包丁|ぼうちょう}', 'cortes rasos escondidos para cozinhar por igual e pegar tempero', { yt: '隠し包丁' });
+  A('cortes', '{面取|めんと}り', 'chanfrar as bordas (para não desmanchar)', { note: 'Kabocha, daikon.', yt: '面取り 切り方' });
+  A('cortes', '{猫|ねこ}の{手|て}', '"mão de gato": dedos dobrados segurando o alimento', { note: 'A lâmina encosta nos nós dos dedos, nunca nas pontas. Segurança básica.', vid: ['hotelknife', 'lefthand'], yt: '猫の手 包丁' });
+  A('cortes', '{皮|かわ}を{剥|む}く', 'descascar', { yt: '皮むき 包丁' });
+
+  /* ---------- verbos e termos de cozinha ---------- */
+  A('verbos', '{焼|や}く', 'assar / grelhar (na chapa): o verbo da casa', { note: 'Educado: 焼きます. Aparece em お好み焼き, 鉄板焼き, 塩焼き.' });
+  A('verbos', '{炒|いた}める', 'saltear / refogar mexendo', { note: 'ニラもやし炒め = nira e broto de feijão salteados.' });
+  A('verbos', '{煮|に}る', 'cozinhar em líquido (cozido, ensopado)');
+  A('verbos', '{煮込|にこ}む', 'cozinhar longamente em fogo baixo', { note: 'O 牛スジ é cozido assim por horas antes de ir para a chapa.' });
+  A('verbos', '{茹|ゆ}でる', 'ferver / cozinhar em água', { note: 'Macarrão, legumes, ovos.' });
+  A('verbos', '{揚|あ}げる', 'fritar por imersão');
+  A('verbos', '{蒸|む}し{焼|や}き', 'assar abafado (tampa + um pouco de água na chapa)', { note: 'Muito usado no teppan para legumes e frutos do mar; precisa de 蓋 (tampa).' });
+  A('verbos', '{切|き}る', 'cortar');
+  A('verbos', '{刻|きざ}む', 'picar', { note: 'ネギを刻む = picar a cebolinha.' });
+  A('verbos', '{剥|む}く', 'descascar');
+  A('verbos', '{洗|あら}う', 'lavar');
+  A('verbos', '{混|ま}ぜる', 'misturar', { note: 'Massa do okonomiyaki: misturar leve, incorporando ar.' });
+  A('verbos', '{和|あ}える', 'temperar misturando (saladas, acompanhamentos)');
+  A('verbos', 'ひっくり{返|かえ}す', 'virar (de cabeça para baixo)', { note: '返す (かえす) também se usa. Ex.: お好み焼きをひっくり返す.', vid: ['flip'] });
+  A('verbos', '{乗|の}せる', 'colocar por cima', { note: '豚肉を乗せる = pôr o porco em cima da massa.' });
+  A('verbos', '{塗|ぬ}る', 'passar / espalhar (molho, manteiga)', { note: 'ソースを塗る.' });
+  A('verbos', 'かける', 'pôr por cima (molho, maionese)', { note: 'マヨネーズをかける.' });
+  A('verbos', '{振|ふ}る', 'polvilhar (sal, aonori)', { note: '塩を振る = salpicar sal.' });
+  A('verbos', '{絞|しぼ}る', 'espremer', { note: 'レモンを絞る. No cardápio aparece 手搾り (espremido à mão), com o kanji 搾.' });
+  A('verbos', '{盛|も}り{付|つ}ける', 'montar o prato / empratar');
+  A('verbos', '{温|あたた}める', 'esquentar');
+  A('verbos', '{冷|ひ}やす', 'gelar / resfriar');
+  A('verbos', '{溶|と}かす', 'derreter / dissolver', { note: 'バターを溶かす, チーズを溶かす.' });
+  A('verbos', '{解凍|かいとう}する', 'descongelar');
+  A('verbos', '{漬|つ}ける', 'marinar / deixar de molho');
+  A('verbos', '{下味|したあじ}をつける', 'temperar antes de cozinhar');
+  A('verbos', '{味見|あじみ}する', 'provar (para checar o tempero)');
+  A('verbos', '{火|ひ}を{通|とお}す', 'cozinhar até o ponto (por dentro)', { note: 'Frutos do mar e porco precisam de 火を通す bem.' });
+  A('verbos', '{焦|こ}げる', 'queimar, tostar demais (sozinho)', { note: '焦がす = queimar algo. 焦げてる！= está queimando!' });
+  A('verbos', '{片付|かたづ}ける', 'arrumar / guardar');
+  A('verbos', '{拭|ふ}く', 'limpar passando pano', { note: 'テーブルを拭く, 鉄板を拭く.' });
+  A('verbos', '{注|つ}ぐ', 'servir / despejar (bebida)', { note: 'ビールを注ぐ.', vid: ['beer'] });
+  A('verbos', '{下|さ}げる', 'retirar (pratos da mesa)', { note: 'お皿をお下げしてもよろしいですか = posso retirar o prato?' });
+  A('verbos', '{運|はこ}ぶ', 'levar / carregar');
+  A('verbos', '{強火|つよび}', 'fogo alto');
+  A('verbos', '{中火|ちゅうび}', 'fogo médio');
+  A('verbos', '{弱火|よわび}', 'fogo baixo');
+  A('verbos', '{焼|や}き{加減|かげん}', 'ponto de cozimento (da carne)', { note: 'レア → ミディアムレア → ミディアム → ウェルダン.', vid: ['doneness'] });
+  A('verbos', 'レア・ミディアム・ウェルダン', 'mal passado · ao ponto · bem passado', { note: 'ミディアムレア = entre mal passado e ao ponto. Pergunta ao cliente: 焼き加減はいかがなさいますか.', vid: ['doneness'] });
+  A('verbos', '{生焼|なまや}け', 'cru por dentro (mal cozido por erro)', { note: 'Problema de segurança em porco e frutos do mar.' });
+  A('verbos', '{焼|や}き{色|いろ}', 'cor dourada do assado', { note: '焼き色をつける = dourar.' });
+  A('verbos', '{塩|しお}コショウ', 'sal e pimenta-do-reino');
+  A('verbos', '{塩加減|しおかげん}', 'quantidade de sal / ponto do sal', { vid: ['salt2'] });
+  A('verbos', '{少々|しょうしょう}', 'um pouquinho (pitada de 2 dedos, ~0,5 g)', { vid: ['salt1'] });
+  A('verbos', 'ひとつまみ', 'pitada de 3 dedos (~1 g)', { vid: ['salt1'] });
+  A('verbos', '{適量|てきりょう}', 'quantidade adequada / a gosto');
+  A('verbos', '{大|おお}さじ・{小|こ}さじ', 'colher de sopa (15 ml) · colher de chá (5 ml)');
+  A('verbos', '{下処理|したしょり}', 'preparo inicial do ingrediente (limpar, tirar partes)');
+  A('verbos', '{背|せ}わた', '"tripa" (veia escura) nas costas do camarão', { note: '背わたを取る = tirar a tripa.', vid: ['ebi', 'ebi2'] });
+  A('verbos', '{砂抜|すなぬ}き', 'tirar a areia das amêijoas (em água salgada)', { vid: ['asari'] });
+  A('verbos', '{油|あぶら}をひく', 'untar com óleo (a chapa ou a frigideira)');
+
+  /* ---------- utensílios ---------- */
+  A('utensilios', '{包丁|ほうちょう}', 'faca de cozinha', { vid: ['washoku'] });
+  A('utensilios', 'まな{板|いた}', 'tábua de corte');
+  A('utensilios', 'コテ（ヘラ）', 'espátula da chapa (para virar e cortar o okonomiyaki)', { note: 'Em Kansai se diz コテ; ヘラ também é comum.', vid: ['flip'] });
+  A('utensilios', '{鉄板|てっぱん}', 'chapa de ferro', { vid: ['temp', 'clean'] });
+  A('utensilios', 'トング', 'pegador');
+  A('utensilios', 'ボウル', 'tigela');
+  A('utensilios', 'ザル', 'escorredor');
+  A('utensilios', 'おたま', 'concha');
+  A('utensilios', '{菜箸|さいばし}', 'hashi longo de cozinha');
+  A('utensilios', 'フライパン', 'frigideira');
+  A('utensilios', '{鍋|なべ}', 'panela');
+  A('utensilios', '{蓋|ふた}', 'tampa', { note: 'No teppan, a tampa é usada para o 蒸し焼き.' });
+  A('utensilios', '{計量|けいりょう}カップ', 'copo medidor');
+  A('utensilios', 'はかり', 'balança', { note: 'Também スケール.' });
+  A('utensilios', 'ラップ', 'filme plástico');
+  A('utensilios', 'アルミホイル', 'papel-alumínio');
+  A('utensilios', '{布巾|ふきん}', 'pano de prato (limpo, para louça e bancada)');
+  A('utensilios', 'ダスター', 'pano de limpeza (para mesas)');
+  A('utensilios', '{冷蔵庫|れいぞうこ}', 'geladeira');
+  A('utensilios', '{冷凍庫|れいとうこ}', 'freezer');
+  A('utensilios', '{洗剤|せんざい}', 'detergente');
+  A('utensilios', 'スポンジ', 'esponja');
+  A('utensilios', '{手袋|てぶくろ}', 'luvas');
+  A('utensilios', 'エプロン', 'avental');
+  A('utensilios', 'タッパー', 'pote plástico com tampa');
+  A('utensilios', 'ジョッキ', 'caneca de chope');
+  A('utensilios', 'ビールサーバー', 'chopeira', { vid: ['beer'] });
+  A('utensilios', '{栓抜|せんぬ}き', 'abridor de garrafa', { note: 'Para cerveja de garrafa, como a サッポロ赤星.' });
+  A('utensilios', 'ソムリエナイフ', 'saca-rolhas de garçom', { vid: ['sommelier'] });
+
   /* ---------- atendimento (extra, não está no cardápio) ---------- */
   A('atendimento', 'いらっしゃいませ', 'bem-vindo(a)! (saudação ao cliente que entra)');
   A('atendimento', '{何名様|なんめいさま}ですか', 'quantas pessoas são?');
@@ -359,5 +574,5 @@
     ['Korokoro-yaki', 'Todo prato korokoro vem com tofu selado e bastante legume grelhado; comer com o ponzu da casa.']
   ];
 
-  window.MENU = { CATS, ING, ITEMS, COURSES, RULES };
+  window.MENU = { CATS, ING, ITEMS, COURSES, RULES, VIDEOS, CATVID };
 })();

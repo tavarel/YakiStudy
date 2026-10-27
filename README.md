@@ -1,40 +1,66 @@
 # 三輪 · Cardápio JP
 
-App de estudo (estilo Anki) para aprender o cardápio do **やきやき三輪 (yakiyaki Miwa)**, em Asakusa:
-nomes em japonês, kanji, leituras, ingredientes, preços, áudio e links para vídeos/fotos de cada prato ou bebida.
-
+App de estudo (estilo Anki) para aprender o cardápio e o dia a dia de trabalho no **やきやき三輪 (yakiyaki Miwa)**, em Asakusa.
 Funciona no navegador do celular, instala na tela inicial e roda offline. Não tem build nem dependências.
 
 ## O que tem
 
-- **Estudar**: flashcards com repetição espaçada (Errei / Difícil / Bom / Fácil), limite diário de cartas novas, direção japonês→português, português→japonês ou misto.
-- **Baralhos**: ingredientes, palavras do cardápio, cursos, entradas, frutos do mar, okonomiyaki, negiyaki, modan-yaki, yakisoba, horumon, teppan-yaki, korokoro-yaki, steaks, sobremesas, cervejas, sours, coquetéis, sem álcool, vinhos, champagnes, frases de atendimento e os **141 kanji** do cardápio.
-- **Cardápio**: lista com busca (japonês, romaji, português, inglês). Toque em um item para ver leitura, romaji, áudio, ingredientes, kanji (on/kun/significado), foto + resumo da Wikipédia e links para vídeos (japonês e português), fotos, Jisho e jpdb.
-- **Kanji**: os kanji do cardápio ordenados pelos mais frequentes, com as palavras do menu em que aparecem.
-- **Quiz**: 10 perguntas de múltipla escolha (significado, japonês ou leitura).
-- **Mais**: configurações, backup do progresso, exportação de palavras (.txt/.csv), cursos e regras da casa, e a lista de itens para confirmar com o staff.
+- **Estudar:** flashcards com repetição espaçada (Errei / Difícil / Bom / Fácil) e limite diário de cartas novas.
+- **Baralhos:**
+  - Frases do trabalho (後ろ通ります, オーダー入ります…) e de atendimento.
+  - Cortes (千切り, 小口切り…), verbos e termos de cozinha, utensílios.
+  - Ingredientes, palavras do cardápio, todos os pratos e bebidas.
+  - 256 kanji.
+- **Cozinha:** contagem regressiva até o 1º turno, plano por dia e módulos com vídeos e práticas (com checklist). Também há treinos:
+  - "Ponha na ordem" (lavar as mãos, chope, champagne, okonomiyaki, yakisoba, steak).
+  - Quiz de ouvido.
+  - Cronômetro para treinos em casa.
+  - Checklist do 1º dia.
+- **Áudio gravado:** voz japonesa para todas as cartas, funciona offline e em qualquer celular. A voz do aparelho fica como opção.
+- **Pitch accent:** linha de tom alto/baixo em cada palavra ("do dicionário" ou "estimado").
+- **Cardápio:** busca (japonês, romaji, português, inglês) e página de cada item com leitura, ingredientes, kanji, vídeos recomendados, foto/resumo da Wikipédia e links (YouTube, Jisho, jpdb).
+- **Kanji**, **Quiz** (significado, japonês, leitura, ouvido) e **Mais** (configurações, áudio, backup, exportação).
 
-## Publicar no GitHub Pages
+## Publicar / atualizar no GitHub Pages
 
-1. Crie um repositório no GitHub (ex.: `yakiyaki-miwa-study`) e envie estes arquivos para a branch `main`.
-2. No repositório: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. O workflow `.github/workflows/pages.yml` valida os dados e publica. O endereço fica em `https://SEU-USUARIO.github.io/yakiyaki-miwa-study/`.
-4. No celular, abra o endereço e use *Adicionar à tela inicial*.
+1. Envie todos os arquivos para a branch `main`, incluindo as pastas `audio/`, `icons/`, `tools/` e `.github/`.
+2. Em **Settings → Pages → Source**, use **GitHub Actions**.
+3. O workflow `.github/workflows/pages.yml` valida os dados e publica em `https://SEU-USUARIO.github.io/NOME-DO-REPO/`.
+4. Depois de atualizar, se o celular mostrar a versão antiga, feche e abra o app de novo. O service worker troca a versão na segunda abertura.
 
 Para testar no computador: `python3 -m http.server` dentro da pasta e abra `http://localhost:8000`.
 
-## Editar o cardápio
+## Editar
 
-- `data.js`: itens, ingredientes, preços. Furigana usa a marcação `{漢字|かんじ}`.
+- `data.js`: itens, ingredientes, preços, frases, cortes, verbos, utensílios e vídeos (`VIDEOS`, `CATVID`). A furigana usa a marcação `{漢字|かんじ}`.
 - `kanji.js`: dicionário dos kanji (on, kun, significado).
-- Depois de editar, rode `node tools/validate.js` (também roda no deploy). Ele confere furigana, kanji sem leitura, ids duplicados e ingredientes inexistentes.
-- Se mudar arquivos do app, troque `VERSION` em `sw.js` para o celular baixar a versão nova.
+- `prep.js`: plano até o 1º turno, módulos, rotinas, treinos e checklist.
+- Depois de editar, rode `node tools/validate.js` (ele também roda no deploy).
+- Se mudar arquivos do app, troque `VERSION` em `sw.js`.
+
+### Regerar o áudio (só se mudar palavras)
+
+Precisa de Python 3.11 e ffmpeg:
+
+```
+pip install pyopenjtalk-prebuilt "numpy<2" scipy "setuptools<70"
+git clone https://github.com/icn-lab/htsvoice-tohoku-f01
+curl -LO https://raw.githubusercontent.com/mifunetoshiro/kanjium/master/data/source_files/raw/accents.txt
+node tools/dump_cards.js > cards.json
+python tools/gen_audio.py cards.json htsvoice-tohoku-f01/tohoku-f01-neutral.htsvoice accents.txt
+```
+
+O áudio fica em 7 pacotes (`audio/p*.bin`) mais `audio/index.js`. Assim o upload pelo site do GitHub continua abaixo do limite de 100 arquivos.
 
 ## Observações
 
 - O progresso fica no `localStorage` do aparelho. Use **Mais → Exportar progresso** para fazer backup.
-- Fotos e resumos vêm da API pública da Wikipédia e precisam de internet; o resto funciona offline.
-- Os links de vídeo abrem **buscas** no YouTube (não vídeos fixos, que podem sair do ar).
-- Itens marcados com ⚠️ têm leitura ou tradução que vale confirmar com o staff.
-- O app não usa nenhuma chave de API e não se conecta ao jpdb; só tem links e exportação de palavras.
-- O cardápio original tem alguns erros de digitação em inglês (ex.: "kirsch" = kimchi, "tongue of beet" = beef); estão anotados nos itens.
+- O pitch accent segue o padrão de Tóquio. "Do dicionário" vem do kanjium; "estimado" é calculado pelo OpenJTalk e pode errar em nomes, palavras estrangeiras e frases longas.
+- Os vídeos foram escolhidos pelo título e pelo canal. Rotinas e passos são gerais: no trabalho, vale o jeito da casa.
+- O app não usa nenhuma chave de API e não se conecta ao jpdb.
+
+## Créditos e licenças
+
+- Voz: [HTS voice tohoku-f01](https://github.com/icn-lab/htsvoice-tohoku-f01), Intelligent Communication Network Laboratory, Tohoku University ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)), sintetizada com [Open JTalk](https://open-jtalk.sourceforge.net/) via [pyopenjtalk](https://github.com/r9y9/pyopenjtalk).
+- Acentos do dicionário: [kanjium](https://github.com/mifunetoshiro/kanjium) ([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)). Os dados de pitch em `audio/index.js` derivam dele e seguem a mesma licença.
+- Fotos e resumos: Wikipédia (carregados ao vivo).

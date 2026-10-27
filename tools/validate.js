@@ -50,5 +50,29 @@ if (KANJI) {
     if (v[1] && !KANA.test(v[1].replace(/[.\s、\-]/g, ''))) err('kun inválido ' + k + ' ' + v[1]);
   }
 } else console.log('KANJI ausente. Kanji usados:\n' + all.sort((a, b) => kcount[b] - kcount[a]).join(''));
+// vídeos, preparação e áudio
+const V = MENU.VIDEOS || {};
+for (const it of MENU.ITEMS) for (const k of it.vid || []) if (!V[k]) err('vídeo inexistente ' + k + ' em ' + it.jp);
+for (const [cat, ks] of Object.entries(MENU.CATVID || {})) for (const k of ks) if (!V[k]) err('vídeo inexistente ' + k + ' em CATVID.' + cat);
+const prepPath = path.join(__dirname, '..', 'prep.js');
+if (fs.existsSync(prepPath)) {
+  vm.runInContext(fs.readFileSync(prepPath, 'utf8'), ctx);
+  const PR = ctx.window.PREP;
+  for (const m of PR.modules) {
+    for (const k of m.videos) if (!V[k]) err('vídeo inexistente ' + k + ' no módulo ' + m.id);
+    for (const d of m.decks) if (!catIds.has(d)) err('baralho inexistente ' + d + ' no módulo ' + m.id);
+  }
+  for (const d of PR.plan) for (const id of d.m) if (!PR.modules.find(m => m.id === id)) err('módulo inexistente ' + id + ' no plano');
+}
+const audPath = path.join(__dirname, '..', 'audio', 'index.js');
+if (fs.existsSync(audPath)) {
+  vm.runInContext(fs.readFileSync(audPath, 'utf8'), ctx);
+  const A = ctx.window.AUDIO || {};
+  const missing = MENU.ITEMS.filter(it => !A[it.cat + ':' + plain(it.jp)]).length;
+  const NP = ctx.window.AUDIO_PACKS || 0;
+  for (let k = 0; k < NP; k++) if (!fs.existsSync(path.join(__dirname, '..', 'audio', 'p' + k + '.bin'))) err('pacote de áudio faltando: audio/p' + k + '.bin');
+  for (const a of Object.values(A)) if (!(a.k < NP)) { err('áudio aponta para pacote inexistente ' + a.k); break; }
+  if (missing) console.log('  ! ' + missing + ' item(ns) sem áudio — rode tools/gen_audio.py');
+}
 console.log(errors ? `\n${errors} erro(s)` : '\nOK');
 process.exit(errors ? 1 : 0);
