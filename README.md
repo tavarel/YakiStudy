@@ -16,6 +16,8 @@ Funciona no navegador do celular, instala na tela inicial e roda offline. Não t
   - Quiz de ouvido.
   - Cronômetro para treinos em casa.
   - Checklist do 1º dia.
+- **Caixa:** simulador do caixa da loja (Sunmi), com テーブル → categorias → itens → 登録. O jogo fala o pedido e você registra: mesa, **お通し × pessoas** primeiro, depois os itens. Tem níveis 1–3, um modo entrega (配達 / ウーバー e T,O) e um modo livre. **?** pisca o botão certo da tela atual; 🔊 repete o pedido. Os dados estão em `pos.js`, transcritos das fotos do caixa. KOROKORO YAKI, ソフドリ e ボトル赤 ainda usam os nomes do cardápio.
+- **Drinks:** receitas do papel da geladeira (`drinks.js`): sours (サワーベース 45 ml), ハイ, ジントニ, 三輪ハイ (吉四六 60 + 午後の紅茶), tabela 焼酎・梅酒 e ウィスキー. Tem um modo treino que esconde as doses.
 - **Áudio gravado:** voz japonesa para todas as cartas, funciona offline e em qualquer celular. A voz do aparelho fica como opção.
 - **Pitch accent:** linha de tom alto/baixo em cada palavra ("do dicionário" ou "estimado").
 - **Cardápio:** busca (japonês, romaji, português, inglês) e página de cada item com leitura, ingredientes, kanji, vídeos recomendados, foto/resumo da Wikipédia e links (YouTube, Jisho, jpdb).
@@ -50,7 +52,7 @@ node tools/dump_cards.js > cards.json
 python tools/gen_audio.py cards.json htsvoice-tohoku-f01/tohoku-f01-neutral.htsvoice accents.txt
 ```
 
-O áudio fica em 7 pacotes (`audio/p*.bin`) mais `audio/index.js`. Assim o upload pelo site do GitHub continua abaixo do limite de 100 arquivos.
+O áudio fica em 7 pacotes (`audio/p*.bin`) mais `audio/index.js`. As falas do jogo do caixa ficam em `audio/pos.bin` + `audio/pos.js`: `node tools/dump_pos.js > pos_clips.json` e `python tools/gen_pos_audio.py pos_clips.json htsvoice-tohoku-f01/tohoku-f01-neutral.htsvoice`. Assim o upload pelo site do GitHub continua abaixo do limite de 100 arquivos.
 
 ## Observações
 

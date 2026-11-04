@@ -70,7 +70,7 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
   };
-  const DEF = { newPerDay: 15, furiFront: false, romaji: true, dir: 'jp', auto: false, theme: 'auto', rate: 0.85, voice: 'rec', pitch: true, shift: P.shift || '' };
+  const DEF = { newPerDay: 15, furiFront: false, romaji: true, dir: 'jp', auto: false, theme: 'auto', rate: 0.85, voice: 'rec', pitch: true, shift: P.shift || '', posText: false, drinkQuiz: false };
   let S = LS.get('ym.srs', {});
   let LOG = LS.get('ym.log', {});
   let DAILY = LS.get('ym.daily', { d: 0, n: 0 });
@@ -327,7 +327,7 @@
     if (sd !== null && sd >= 0) h += '<button class="banner" data-act="tab" data-tab="prep">🔪 ' + (sd === 0 ? '<b>Hoje é o 1º turno!</b> がんばって！' : '1º turno em <b>' + sd + ' dia' + (sd > 1 ? 's' : '') + '</b> — abrir o plano da cozinha') + ' ›</button>';
     h += '<div class="panel hero"><div class="nums"><div><b>' + allDue + '</b><span class="small muted">para revisar</span></div><div><b>' + Math.min(nl, unseen) + '</b><span class="small muted">novos hoje</span></div><div><b>' + learned + '/' + cards.length + '</b><span class="small muted">vistos</span></div></div>' +
       '<button class="btn primary" data-act="deck" data-f="all">Estudar agora</button></div>';
-    h += '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="deck" data-f="kind:vocab">📖 Só vocabulário</button><button class="btn sm" data-act="deck" data-f="kind:food">🍽️ Só comidas</button><button class="btn sm" data-act="deck" data-f="kind:drink">🍺 Só bebidas</button></div>';
+    h += '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="tab" data-tab="quiz">❓ Quiz</button><button class="btn sm" data-act="deck" data-f="kind:vocab">📖 Só vocabulário</button><button class="btn sm" data-act="deck" data-f="kind:food">🍽️ Só comidas</button><button class="btn sm" data-act="deck" data-f="kind:drink">🍺 Só bebidas</button></div>';
     h += '<h2>Baralhos</h2>';
     M.CATS.map(c => c.id).concat('kanji').forEach(id => {
       const cs = cards.filter(c => c.cat === id), cat = CAT[id];
@@ -566,6 +566,200 @@
     return true;
   }
 
+  /* ---------- simulador do caixa ---------- */
+  const PO = window.POS || null, PA = window.POS_AUDIO || {}, DR = window.DRINKS || null;
+  const POSI = [], POSK = {};
+  if (PO) PO.cats.forEach((c, ci) => c.items.forEach((it, ii) => {
+    const f = it[2] || '0';
+    const x = { ci, ii, key: ci + ':' + ii, l: it[0], p: it[1], s: it[3] || it[0], k: it[4] || '', pt: it[5] || '', lv: +f[0] || 0,
+      red: f.includes('r'), g: f.includes('g34') ? 34 : f.includes('g2') ? 2 : 0, course: f.includes('c'), otoshi: f.includes('o'), to: f.includes('t'), uber: f.includes('u') };
+    POSI.push(x); POSK[x.key] = x;
+  }));
+  const OTOSHI = POSI.find(x => x.otoshi);
+  const DRINK_CATS = ['ビール', 'ウィスキー', 'サワー', 'カクテル', 'ソフドリ', '日本酒、焼酎、ワイン'];
+  const isDrink = x => DRINK_CATS.includes(PO.cats[x.ci].name);
+  const rint = n => Math.floor(Math.random() * n);
+  const pick = a => a[rint(a.length)];
+
+  let posBuf = null, posSrcs = [];
+  const posDec = {};
+  function posPack() {
+    if (!posBuf) posBuf = fetch('audio/pos.bin').then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); }).catch(e => { posBuf = null; throw e; });
+    return posBuf;
+  }
+  async function posClip(text) {
+    const a = PA[text], ctx = ctxGet();
+    if (!a || !ctx) throw new Error('sem clipe');
+    if (posDec[text]) return posDec[text];
+    const ab = (await posPack()).slice(a[0], a[0] + a[1]);
+    const b = await new Promise((res, rej) => { const p = ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+    posDec[text] = b; return b;
+  }
+  async function posSpeak(seq) {
+    const ctx = ctxGet();
+    posSrcs.forEach(s => { try { s.stop(); } catch (e) { } }); posSrcs = [];
+    try {
+      const bufs = await Promise.all(seq.map(posClip));
+      let t = ctx.currentTime + 0.05;
+      bufs.forEach(b => { const s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(t); posSrcs.push(s); t += b.duration + 0.22; });
+    } catch (e) { ttsSay(seq.join('、')); }
+  }
+
+  function posNewOrder(kind, level) {
+    if (kind === 'delivery') {
+      if (Math.random() < 0.7) {
+        const items = shuffle(POSI.filter(x => x.uber)).slice(0, 1 + rint(3)).map(x => ({ key: x.key, n: Math.random() < 0.25 ? 2 : 1 }));
+        return { table: '配達', guests: 0, items, intro: PO.say.uber[0] };
+      }
+      return { table: 'T,O', guests: 0, items: [{ key: POSI.find(x => x.to).key, n: 1 + rint(3) }], intro: PO.say.to[0] };
+    }
+    const tables = PO.tables.filter(t => PO.tableSay[t]);
+    const guests = level === 3 ? 2 + rint(5) : 1 + rint(4);
+    const pool = POSI.filter(x => x.lv > 0 && x.lv <= level && !x.course && (x.g === 0 || (x.g === 2 ? guests <= 2 : guests >= 3)));
+    let items;
+    if (level === 3 && Math.random() < 0.2) {
+      const course = pick(POSI.filter(x => x.course && x.lv > 0 && x.lv <= 3));
+      items = [{ key: course.key, n: guests }].concat(shuffle(pool.filter(isDrink)).slice(0, 1 + rint(2)).map(x => ({ key: x.key, n: 1 + rint(Math.min(guests, 3)) })));
+    } else {
+      const n = level === 1 ? 1 : level === 2 ? 2 + rint(2) : 3 + rint(3);
+      let chosen = shuffle(pool).slice(0, n);
+      if (level >= 2 && !chosen.some(isDrink)) chosen[chosen.length - 1] = pick(pool.filter(isDrink));
+      chosen = chosen.filter((x, i) => chosen.indexOf(x) === i);
+      items = chosen.map(x => ({ key: x.key, n: level === 1 ? 1 : level === 2 ? 1 + rint(2) : 1 + rint(Math.min(4, guests)) }));
+    }
+    return { table: pick(tables), guests, items };
+  }
+  const posExpected = o => (o.guests && OTOSHI ? [{ key: OTOSHI.key, n: o.guests }] : []).concat(o.items);
+  function posSeq(o) {
+    const seq = [];
+    if (o.intro) seq.push(o.intro);
+    else { seq.push(PO.tableSay[o.table][1]); seq.push(PO.say.guests[o.guests][0]); }
+    o.items.forEach(it => { const x = POSK[it.key]; seq.push(x.s); seq.push(x.course ? PO.say.guests[it.n][0] : PO.say.qty[it.n][0]); });
+    return seq;
+  }
+  function posStart(kind, level) {
+    const ord = kind === 'free' ? null : posNewOrder(kind, level);
+    ui.pos = { kind, level, ord, screen: 'tables', cat: null, table: null, lines: [], seq: [], hints: 0, errs: 0, locked: 0, t0: Date.now(), res: null, showText: !!SET.posText, hintSel: null, badSel: null };
+    render();
+    if (ord) posSpeak(posSeq(ord));
+  }
+  const posLineMap = z => { const m = {}; z.lines.forEach(l => m[l.key] = l.n); return m; };
+  const posSum = z => z.lines.reduce((a, l) => a + POSK[l.key].p * l.n, 0);
+  function posTarget(z) {
+    if (!z.ord) return null;
+    if (z.screen === 'tables') return '[data-act="postable"][data-t="' + z.ord.table + '"]';
+    const exp = posExpected(z.ord), em = {}; exp.forEach(e => em[e.key] = e.n);
+    const got = posLineMap(z);
+    const extra = z.lines.find(l => !(l.key in em) || l.n > em[l.key]);
+    if (extra) return '[data-act="posminus"][data-k="' + extra.key + '"]';
+    const need = exp.find(e => (got[e.key] || 0) < e.n);
+    if (!need) return '[data-act="posreg"]';
+    const it = POSK[need.key];
+    if (z.screen === 'cats') return '[data-act="poscat"][data-c="' + it.ci + '"]';
+    return z.cat === it.ci ? '[data-act="positem"][data-k="' + need.key + '"]' : '[data-act="posback"]';
+  }
+  function posEvaluate(z) {
+    const exp = posExpected(z.ord), em = {}, got = posLineMap(z), rows = [];
+    exp.forEach(e => { em[e.key] = e.n; rows.push({ key: e.key, want: e.n, got: got[e.key] || 0 }); });
+    z.lines.forEach(l => { if (!(l.key in em)) rows.push({ key: l.key, want: 0, got: l.n }); });
+    rows.forEach(r => r.ok = r.want === r.got);
+    let orderOk = true;
+    if (z.ord.guests && OTOSHI) { const firstOther = z.seq.findIndex(k => k !== OTOSHI.key), firstOt = z.seq.indexOf(OTOSHI.key); orderOk = firstOt !== -1 && (firstOther === -1 || firstOt < firstOther); }
+    const allOk = rows.every(r => r.ok);
+    const perfect = allOk && orderOk && !z.errs && !z.hints && !z.locked;
+    const st = PS.pos = Object.assign({ n: 0, ok: 0, perfect: 0, streak: 0, best: 0 }, PS.pos || {});
+    st.n++; if (allOk) st.ok++; if (perfect) { st.perfect++; st.streak++; st.best = Math.max(st.best, st.streak); } else st.streak = 0;
+    save();
+    return { rows, orderOk, allOk, perfect, secs: Math.round((Date.now() - z.t0) / 1000) };
+  }
+  const yenP = n => n.toLocaleString('en-US') + '円';
+  function posOrderText(o) {
+    let h = '<div class="pos-ord"><b>' + esc(o.intro ? o.intro : o.table + ' · ' + PO.say.guests[o.guests][0] + '（' + PO.say.guests[o.guests][1] + '）') + '</b><ul class="tight">';
+    o.items.forEach(it => { const x = POSK[it.key]; h += '<li><span class="jp">' + esc(x.s) + '</span>' + (x.k && x.k !== x.s ? ' <span class="muted">（' + esc(x.k) + '）</span>' : '') + ' ×' + it.n + ' <span class="muted small">' + esc(x.pt) + '</span></li>'; });
+    return h + '</ul></div>';
+  }
+  function posMenu() {
+    const st = Object.assign({ n: 0, ok: 0, perfect: 0, streak: 0, best: 0 }, PS.pos || {});
+    let h = '<div class="panel"><h2 style="margin-top:0">🧾 Prática do caixa</h2>' +
+      '<p>Você ouve o pedido e registra no caixa como no trabalho:</p><ol class="tight"><li>Toque na mesa certa.</li><li><b>その他 → お通し</b>, uma vez por pessoa (a taxa da mesa vem primeiro).</li><li>Os itens, na quantidade pedida.</li><li><b>登録</b> para registrar.</li></ol>' +
+      '<p class="small muted">🔊 repete o pedido. <b>?</b> pisca o botão certo só na tela em que você está: na tela das categorias mostra a categoria; dentro dela, o item. Tocar numa linha do pedido (à direita) tira uma unidade.</p></div>';
+    h += '<div class="pos-levels">' +
+      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="1"><span class="em">1</span><span class="nm">Nível 1<div class="small muted">1 item por pedido</div></span></button>' +
+      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="2"><span class="em">2</span><span class="nm">Nível 2<div class="small muted">2–3 itens, com bebida e quantidades</div></span></button>' +
+      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="3"><span class="em">3</span><span class="nm">Nível 3<div class="small muted">3–5 itens, porções 2名様 / 3〜4名様, garrafas e cursos</div></span></button>' +
+      '<button class="deck" data-act="posgo" data-kind="delivery" data-lv="0"><span class="em">🛵</span><span class="nm">Entrega e para viagem<div class="small muted">配達 + categoria ウーバー · T,O</div></span></button>' +
+      '<button class="deck" data-act="posgo" data-kind="free" data-lv="0"><span class="em">🧭</span><span class="nm">Explorar o caixa<div class="small muted">Sem pedido: navegue pelas telas à vontade</div></span></button></div>';
+    h += '<label class="set">Mostrar o texto do pedido desde o início<input type="checkbox" data-set="posText"' + (SET.posText ? ' checked' : '') + '></label>';
+    h += '<p class="small muted">Jogados: ' + st.n + ' · certos: ' + st.ok + ' · perfeitos (sem dica e sem erro): ' + st.perfect + ' · sequência: ' + st.streak + ' (recorde ' + st.best + ')</p>';
+    h += '<p class="small muted">Montado a partir das fotos do caixa de 03/11. KOROKORO YAKI, ソフドリ e ボトル赤 ainda não têm foto: usam os nomes do cardápio. A fala dos itens com R / Half / Regular / 2名様 é uma suposição minha de como a equipe fala.</p>';
+    return h;
+  }
+  function posBoard() {
+    const z = ui.pos, cats = PO.cats;
+    let h = '<div class="pos-bar">';
+    if (z.ord) h += '<button class="btn sm primary" data-act="posplay">🔊 Ouvir de novo</button><button class="btn sm" data-act="poshint">? Dica</button><button class="btn sm" data-act="postext">👁 ' + (z.showText ? 'Esconder' : 'Ver') + ' texto</button>';
+    h += '<span class="small muted">' + (z.kind === 'free' ? 'Modo livre' : z.kind === 'delivery' ? 'Entrega' : 'Nível ' + z.level) + (z.ord ? ' · dicas ' + z.hints + ' · erros ' + (z.errs + z.locked) : '') + '</span><button class="btn sm" data-act="posquit">Sair</button></div>';
+    if (z.ord && z.showText) h += posOrderText(z.ord);
+    let title, grid = '', back = z.screen !== 'tables';
+    if (z.screen === 'tables') {
+      title = 'テーブル';
+      grid = PO.tables.map(t => '<button class="pt" data-act="postable" data-t="' + esc(t) + '"><span class="pl">' + esc(t) + '</span><span class="pp">' + (t === z.table ? yenP(posSum(z)) : '0円') + '</span></button>').join('');
+    } else if (z.screen === 'cats') {
+      title = z.table || '';
+      grid = cats.map((c, ci) => '<button class="pt cat' + (c.empty ? ' empty' : '') + '" data-act="poscat" data-c="' + ci + '"><span class="pl">' + (ci === 0 ? '<span class="star">★</span>' : esc(c.name)) + '</span><span class="pp">' + (ci === 1 ? '' : c.items.length + '品') + '</span></button>').join('');
+    } else {
+      const c = cats[z.cat]; title = c.name;
+      grid = c.items.map((it, ii) => { const x = POSK[z.cat + ':' + ii]; return '<button class="pt' + (x.red ? ' red' : '') + '" data-act="positem" data-k="' + x.key + '"><span class="pl">' + esc(x.l) + '</span><span class="pp">' + yenP(x.p) + '</span></button>'; }).join('');
+      if (c.foto === false) grid += '<div class="pos-note small">Sem foto do caixa: nomes do cardápio.</div>';
+      if (c.locked) grid += '<div class="pos-note small">紐付け触らない = itens ligados aos cursos. Não mexa.</div>';
+    }
+    const sum = posSum(z), svc = Math.floor(sum * 0.05), pts = z.lines.reduce((a, l) => a + l.n, 0);
+    h += '<div class="pos"><div class="pos-main"><div class="pos-head">' + (back ? '<button class="pos-ic" data-act="posback" aria-label="voltar">←</button>' : '<span></span>') +
+      '<span class="pos-title">' + esc(title) + '</span><span class="pos-icons">' + (z.screen === 'tables' ? '<span class="pos-ic">⟳</span>' : '<span class="pos-ic">⏱</span><span class="pos-ic">👤<small>0</small></span><span class="pos-ic">🖨</span>') + '</span></div>' +
+      '<div class="pos-grid">' + grid + '</div>' +
+      '<div class="pos-foot"><button data-act="postables">▦<br>テーブル</button><button data-act="posnoop">👤<br>管理者</button><span></span><button data-act="posnoop">⚙<br>設定</button></div></div>' +
+      '<div class="pos-side"><div class="pos-lines">' + (z.lines.length ? z.lines.map(l => { const x = POSK[l.key]; return '<button class="pos-line" data-act="posminus" data-k="' + l.key + '"><span>' + esc(x.l) + '</span><span>×' + l.n + '</span><span>' + yenP(x.p * l.n) + '</span></button>'; }).join('') : '') + '</div>' +
+      '<button class="pos-reg" data-act="posreg">登録</button>' +
+      '<div class="pos-tot"><div><span>小計 (' + pts + '点)</span><span>' + yenP(sum) + '</span></div><div><span>サービス料 (5%)</span><span>' + yenP(svc) + '</span></div><div><span>消費税</span><span>込</span></div><div><span>値引</span><span>0円</span></div><div class="sum"><span>合計</span><span>' + yenP(sum + svc) + '</span></div></div></div></div>';
+    return h;
+  }
+  function posResult() {
+    const z = ui.pos, r = z.res;
+    let h = '<div class="panel"><h2 style="margin-top:0">' + (r.perfect ? '⭐ Perfeito!' : r.allOk ? '✅ Pedido certo' : '❌ Tem diferença') + '</h2>';
+    h += '<p class="small muted">' + r.secs + ' s · dicas ' + z.hints + ' · erros ' + (z.errs + z.locked) + '</p>';
+    h += posOrderText(z.ord);
+    h += '<table class="pos-res"><tr><th></th><th>Botão</th><th>Pedido</th><th>Você</th></tr>' + r.rows.map(x => '<tr class="' + (x.ok ? 'ok' : 'bad') + '"><td>' + (x.ok ? '✓' : '✗') + '</td><td class="jp">' + esc(POSK[x.key].l) + '<div class="small muted">' + esc(PO.cats[POSK[x.key].ci].name) + '</div></td><td>' + x.want + '</td><td>' + x.got + '</td></tr>').join('') + '</table>';
+    if (!r.orderOk) h += '<p class="badge warn">A お通し precisa ser registrada antes dos outros itens.</p>';
+    h += '<div class="drills" style="margin-top:10px"><button class="btn primary" data-act="posnext">Próximo pedido</button><button class="btn" data-act="posplay">🔊 Ouvir este de novo</button><button class="btn" data-act="posquit">Sair</button></div></div>';
+    return h;
+  }
+  function renderPos() {
+    if (!PO) return '<p class="muted">Dados do caixa não encontrados (pos.js).</p>';
+    if (!ui.pos) return posMenu();
+    if (ui.pos.res) return posResult();
+    return posBoard();
+  }
+
+  /* ---------- tela: drinks ---------- */
+  const doseHtml = s => esc(s).replace(/(\d+(?:\+\d+)?)(\s?ml)?/g, '<span class="dose" data-act="dose">$1$2</span>');
+  function renderDrinks() {
+    if (!DR) return '<p class="muted">Receitas não encontradas (drinks.js).</p>';
+    const card = d => '<div class="panel dcard"><div class="dh"><b class="jp">' + esc(d.pos) + '</b>' + (d.sheet !== d.pos ? ' <span class="muted small">no papel: ' + esc(d.sheet) + (d.k && d.k !== d.sheet ? '（' + esc(d.k) + '）' : '') + '</span>' : '') + '</div><ol class="tight">' + d.steps.map(s => '<li>' + doseHtml(s) + '</li>').join('') + '</ol></div>';
+    const table = (t, title) => '<h3>' + title + '</h3><table class="dtab"><tr><th></th>' + t.cols.map(c => '<th>' + esc(c[0]) + '<div class="code">' + esc(c[1]) + '</div></th>').join('') + '</tr>' +
+      t.rows.map(r => '<tr><th class="jp">' + esc(r[0]) + '<div class="small muted">' + esc(r[1]) + '</div></th>' + r[2].map(v => '<td>' + doseHtml(v) + '</td>').join('') + '</tr>').join('') + '</table><p class="small muted">' + esc(t.note) + '</p>';
+    let h = '<div class="panel"><h2 style="margin-top:0">🍹 Drinks: como fazer</h2><p>Copiado do papel da geladeira. Doses em ml. Todo soft drink vai com gelo.</p>' +
+      '<label class="set">Modo treino: esconder as doses (toque para ver)<input type="checkbox" data-set="drinkQuiz"' + (SET.drinkQuiz ? ' checked' : '') + '></label>' +
+      '<h3>Códigos do papel (e do pedido)</h3><div class="codes">' + DR.codes.map(c => '<span class="chip"><b class="code">' + esc(c[0]) + '</b> ' + esc(c[1]) + ' · ' + esc(c[2]) + '</span>').join('') + '</div></div>';
+    h += '<div class="' + (SET.drinkQuiz ? 'dquiz' : '') + '">';
+    h += '<h2>Sours (サワー)</h2><p class="small muted">A linha 基本 do papel: a base de toda sour é <b>サワーベース 45 ml</b> (provavelmente a alavanca da direita para a frente; confirme).</p><div class="dgrid">' + DR.sours.map(card).join('') + '</div>';
+    h += '<h2>ハイ e coquetéis</h2><div class="dgrid">' + DR.hai.map(card).join('') + '</div>';
+    h += '<div class="panel">' + table(DR.shochu, '焼酎・梅酒 (shochu e licor de ume)') + '</div>';
+    h += '<div class="panel">' + table(DR.whisky, 'ウィスキー') + '</div>';
+    h += '</div>';
+    h += '<div class="panel"><h3 style="margin-top:0">Cerveja</h3><ul class="tight">' + DR.beer.map(b => '<li><b class="jp">' + esc(b[0]) + '</b> <span class="muted">（' + esc(b[1]) + '）</span>: ' + esc(b[2]) + '</li>').join('') + '</ul><h3>Sem álcool</h3><p>' + esc(DR.soft) + '</p></div>';
+    return h;
+  }
+
   /* ---------- tela: mais ---------- */
   function renderMore() {
     const chkc = cards.filter(c => c.chk);
@@ -663,8 +857,12 @@
   function applyTheme() { const r = document.documentElement; if (SET.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', SET.theme); }
   function render() {
     document.body.dataset.tab = ui.tab;
-    const v = ui.tab === 'study' ? renderStudy() : ui.tab === 'prep' ? renderPrep() : ui.tab === 'menu' ? renderMenu() : ui.tab === 'kanji' ? renderKanji() : ui.tab === 'quiz' ? renderQuiz() : renderMore();
+    const v = ui.tab === 'study' ? renderStudy() : ui.tab === 'prep' ? renderPrep() : ui.tab === 'pos' ? renderPos() : ui.tab === 'drinks' ? renderDrinks() : ui.tab === 'menu' ? renderMenu() : ui.tab === 'kanji' ? renderKanji() : ui.tab === 'quiz' ? renderQuiz() : renderMore();
     $('#view').innerHTML = v;
+    document.body.classList.toggle('wide', ui.tab === 'pos' && !!ui.pos && !ui.pos.res);
+    if (ui.tab === 'pos' && ui.pos) {
+      [['hintSel', 'blink'], ['badSel', 'bad']].forEach(([k, cls]) => { const s = ui.pos[k]; const el = s && $(s); if (el) { el.classList.add(cls); if (cls === 'blink') el.scrollIntoView({ block: 'nearest' }); } });
+    }
     $('#statline').textContent = dueCards(cards).length + ' p/ revisar · 🔥 ' + streak();
     if (ui.tab === 'study' && ui.sess && ui.sess.queue.length && SET.auto) {
       const id = ui.sess.queue[0], tag = id + ':' + ui.sess.show;
@@ -714,6 +912,46 @@
     },
     qnext() { const z = ui.quiz; z.i++; z.picked = null; render(); if (z.mode === 'listen' && z.qs[z.i]) speakCard(byId[z.qs[z.i].id]); },
     qquit() { ui.quiz = null; render(); },
+    posgo(t) { ctxGet(); posStart(t.dataset.kind, +t.dataset.lv); window.scrollTo(0, 0); },
+    posquit() { posSrcs.forEach(s => { try { s.stop(); } catch (e) { } }); ui.pos = null; render(); },
+    posnext() { const z = ui.pos; posStart(z.kind, z.level); window.scrollTo(0, 0); },
+    posplay() { const z = ui.pos; if (z && z.ord) posSpeak(posSeq(z.ord)); },
+    postext() { const z = ui.pos; z.showText = !z.showText; z.hintSel = z.badSel = null; render(); },
+    posnoop() { toast('Não usado no jogo.'); },
+    poshint() { const z = ui.pos; const sel = posTarget(z); if (!sel) return; z.hints++; z.badSel = null; z.hintSel = sel; render(); setTimeout(() => { if (ui.pos === z && z.hintSel === sel) { z.hintSel = null; const el = $(sel); if (el) el.classList.remove('blink'); } }, 2600); },
+    postable(t) {
+      const z = ui.pos; z.hintSel = z.badSel = null;
+      const tb = t.dataset.t;
+      if (z.ord && tb !== z.ord.table) { z.errs++; z.badSel = '[data-act="postable"][data-t="' + tb + '"]'; toast('Mesa errada. Ouça de novo (🔊).'); render(); return; }
+      if (z.table && z.table !== tb) z.lines = [];
+      z.table = tb; z.screen = 'cats'; render();
+    },
+    poscat(t) {
+      const z = ui.pos, c = PO.cats[+t.dataset.c]; z.hintSel = z.badSel = null;
+      if (c.empty) { toast('Categoria vazia.'); return; }
+      z.screen = 'items'; z.cat = +t.dataset.c; render();
+    },
+    positem(t) {
+      const z = ui.pos, x = POSK[t.dataset.k]; z.hintSel = z.badSel = null;
+      if (PO.cats[x.ci].locked) { z.locked++; z.badSel = '[data-act="positem"][data-k="' + x.key + '"]'; toast('紐付け触らない: não mexa nesta categoria.'); render(); return; }
+      const l = z.lines.find(y => y.key === x.key);
+      if (l) l.n++; else z.lines.push({ key: x.key, n: 1 });
+      z.seq.push(x.key); render();
+    },
+    posminus(t) {
+      const z = ui.pos, l = z.lines.find(y => y.key === t.dataset.k); z.hintSel = z.badSel = null;
+      if (!l) return; l.n--; if (l.n <= 0) z.lines = z.lines.filter(y => y !== l); render();
+    },
+    posback() { const z = ui.pos; z.hintSel = z.badSel = null; z.screen = z.screen === 'items' ? 'cats' : 'tables'; render(); },
+    postables() { const z = ui.pos; z.hintSel = z.badSel = null; z.screen = 'tables'; render(); },
+    posreg() {
+      const z = ui.pos; z.hintSel = z.badSel = null;
+      if (!z.table) { toast('Escolha a mesa primeiro.'); return; }
+      if (!z.lines.length) { toast('Nada para registrar.'); return; }
+      if (!z.ord) { toast('Registrado (modo livre).'); z.lines = []; z.seq = []; z.screen = 'tables'; z.table = null; render(); return; }
+      z.res = posEvaluate(z); render(); window.scrollTo(0, 0);
+    },
+    dose(t) { t.classList.toggle('shown'); },
     listen(t) { ui.tab = 'quiz'; ui.qsel = { f: t.dataset.f, m: 'listen' }; window.scrollTo(0, 0); if (!startQuiz(t.dataset.f, 'listen')) render(); },
     pchk(t) { const k = t.dataset.k; if (PS.c[k]) delete PS.c[k]; else PS.c[k] = dateStr(); save(); render(); },
     pmod(t) {
@@ -784,6 +1022,7 @@
     const k = t.dataset && t.dataset.set; if (!k) return;
     SET[k] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(0, Math.min(100, parseInt(t.value, 10) || 0)) : (k === 'rate' ? parseFloat(t.value) : t.value);
     save(); applyTheme();
+    if (k === 'drinkQuiz') render();
   });
   document.addEventListener('keydown', e => {
     if (ui.tab !== 'study' || !ui.sess || stack.length || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;

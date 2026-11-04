@@ -74,5 +74,27 @@ if (fs.existsSync(audPath)) {
   for (const a of Object.values(A)) if (!(a.k < NP)) { err('áudio aponta para pacote inexistente ' + a.k); break; }
   if (missing) console.log('  ! ' + missing + ' item(ns) sem áudio — rode tools/gen_audio.py');
 }
+// caixa e drinks
+const posPath = path.join(__dirname, '..', 'pos.js');
+if (fs.existsSync(posPath)) {
+  vm.runInContext(fs.readFileSync(posPath, 'utf8'), ctx);
+  const PO = ctx.window.POS;
+  const pa = path.join(__dirname, '..', 'audio', 'pos.js');
+  if (fs.existsSync(pa)) vm.runInContext(fs.readFileSync(pa, 'utf8'), ctx);
+  const PA = ctx.window.POS_AUDIO || {};
+  let n = 0, targets = 0, ot = 0;
+  for (const c of PO.cats) for (const it of c.items) {
+    n++;
+    if (typeof it[0] !== 'string' || typeof it[1] !== 'number') err('item do caixa inválido em ' + c.name);
+    const f = it[2] || '0';
+    if (f.includes('o')) ot++;
+    if (/[123]/.test(f[0]) || /[ut]/.test(f)) { targets++; if (!it[3]) err('item sem fala: ' + it[0]); else if (Object.keys(PA).length && !PA[it[3]]) err('item sem áudio: ' + it[3]); }
+  }
+  if (ot !== 1) err('precisa de exatamente uma お通し');
+  for (const t of PO.tables) if (PO.tableSay[t] && Object.keys(PA).length && !PA[PO.tableSay[t][1]]) err('mesa sem áudio ' + t);
+  console.log('caixa: ' + PO.cats.length + ' categorias, ' + n + ' botões, ' + targets + ' podem cair no jogo');
+}
+const drPath = path.join(__dirname, '..', 'drinks.js');
+if (fs.existsSync(drPath)) { vm.runInContext(fs.readFileSync(drPath, 'utf8'), ctx); const D = ctx.window.DRINKS; if (!D || !D.sours || !D.sours.length) err('drinks.js vazio'); }
 console.log(errors ? `\n${errors} erro(s)` : '\nOK');
 process.exit(errors ? 1 : 0);
