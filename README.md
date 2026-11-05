@@ -16,12 +16,25 @@ Funciona no navegador do celular, instala na tela inicial e roda offline. Não t
   - Quiz de ouvido.
   - Cronômetro para treinos em casa.
   - Checklist do 1º dia.
-- **Caixa:** simulador do caixa da loja (Sunmi), com テーブル → categorias → itens → 登録. O jogo fala o pedido e você registra: mesa, **お通し × pessoas** primeiro, depois os itens. Tem níveis 1–3, um modo entrega (配達 / ウーバー e T,O) e um modo livre. **?** pisca o botão certo da tela atual; 🔊 repete o pedido. Os dados estão em `pos.js`, transcritos das fotos do caixa. KOROKORO YAKI, ソフドリ e ボトル赤 ainda usam os nomes do cardápio.
-- **Drinks:** receitas do papel da geladeira (`drinks.js`): sours (サワーベース 45 ml), ハイ, ジントニ, 三輪ハイ (吉四六 60 + 午後の紅茶), tabela 焼酎・梅酒 e ウィスキー. Tem um modo treino que esconde as doses.
+- **Caixa:** simulador do caixa da loja (Sunmi), com テーブル → categorias → itens → 登録. O jogo fala a mesa e o pedido. O número de pessoas **aparece desenhado** (bonequinhos), não é falado. Você registra a mesa, **お通し × pessoas** primeiro e depois os itens.
+  - Os pedidos seguem a loja: ¾ no balcão (C), quase sempre 2 pessoas, cada uma com 1 bebida e 1 comida. Os itens mais pedidos (角ハイ, 生ビール…) saem mais vezes (`pop` em `pos.js`).
+  - Níveis: 1 = só bebidas; 2 = bebida + comida; 3 = pedido grande. Também há um modo personalizado (lugar, pessoas, tamanho), um modo entrega (配達 / ウーバー e T,O) e um modo livre.
+  - **?** pisca o botão certo da tela atual; 🔊 repete o pedido. KOROKORO YAKI, ソフドリ e ボトル赤 ainda usam os nomes do cardápio.
+- **Drinks** (`drinks.js`): toda bebida na mesma ordem (copo → gelo → álcool → complemento → servir), com desenhos.
+  - Desenhos: os 3 copos da prateleira, as 3 alavancas da máquina, o copinho medidor (lado grande 45, lado pequeno 30) e a cerveja 8:2.
+  - Um cartão por bebida e as tabelas 焼酎・梅酒 e ウィスキー.
+  - Treinos "monte a bebida" (copo, gelo, álcool e complemento) e "esconder doses".
+- **Molhos** (`cond.js`): os pratinhos que acompanham os pratos, da folha escrita à mão da loja.
+  - Os pratinhos: 小皿, 薬皿, 二連皿, 三連皿 e メガネ皿, cada um desenhado com o que vai em cada divisão.
+  - Frase com áudio para pôr na mesa e versão em inglês.
+  - Para decorar:
+    - "A lógica": os pratos em 3 famílias (frutos do mar, carne/chapa, トンペイ), com uma dica de memória para cada prato.
+    - Rodada com os 10 pratos, alternando "monte o pratinho" e "de qual prato é este pratinho?". O que errar volta até acertar todos.
+    - Baralho de flashcards "🥢 Molhos" no Estudar, com repetição espaçada.
 - **Áudio gravado:** voz japonesa para todas as cartas, funciona offline e em qualquer celular. A voz do aparelho fica como opção.
 - **Pitch accent:** linha de tom alto/baixo em cada palavra ("do dicionário" ou "estimado").
 - **Cardápio:** busca (japonês, romaji, português, inglês) e página de cada item com leitura, ingredientes, kanji, vídeos recomendados, foto/resumo da Wikipédia e links (YouTube, Jisho, jpdb).
-- **Kanji**, **Quiz** (significado, japonês, leitura, ouvido) e **Mais** (configurações, áudio, backup, exportação).
+- **Kanji** e **Quiz** (significado, japonês, leitura, ouvido): botões na tela Estudar. **Mais**: configurações, áudio, backup e exportação.
 
 ## Publicar / atualizar no GitHub Pages
 
@@ -37,6 +50,7 @@ Para testar no computador: `python3 -m http.server` dentro da pasta e abra `http
 - `data.js`: itens, ingredientes, preços, frases, cortes, verbos, utensílios e vídeos (`VIDEOS`, `CATVID`). A furigana usa a marcação `{漢字|かんじ}`.
 - `kanji.js`: dicionário dos kanji (on, kun, significado).
 - `prep.js`: plano até o 1º turno, módulos, rotinas, treinos e checklist.
+- `pos.js` (caixa), `drinks.js` (bebidas) e `cond.js` (molhos). Itens marcados `check` ainda precisam ser confirmados na loja.
 - Depois de editar, rode `node tools/validate.js` (ele também roda no deploy).
 - Se mudar arquivos do app, troque `VERSION` em `sw.js`.
 
@@ -52,7 +66,7 @@ node tools/dump_cards.js > cards.json
 python tools/gen_audio.py cards.json htsvoice-tohoku-f01/tohoku-f01-neutral.htsvoice accents.txt
 ```
 
-O áudio fica em 7 pacotes (`audio/p*.bin`) mais `audio/index.js`. As falas do jogo do caixa ficam em `audio/pos.bin` + `audio/pos.js`: `node tools/dump_pos.js > pos_clips.json` e `python tools/gen_pos_audio.py pos_clips.json htsvoice-tohoku-f01/tohoku-f01-neutral.htsvoice`. Assim o upload pelo site do GitHub continua abaixo do limite de 100 arquivos.
+O áudio fica em 7 pacotes (`audio/p*.bin`) mais `audio/index.js`. As falas do caixa e dos molhos ficam em `audio/pos.bin` + `audio/pos.js`: `node tools/dump_pos.js > pos_clips.json` e `python tools/gen_pos_audio.py pos_clips.json htsvoice-tohoku-f01/tohoku-f01-neutral.htsvoice`. Assim o upload pelo site do GitHub continua abaixo do limite de 100 arquivos.
 
 ## Observações
 

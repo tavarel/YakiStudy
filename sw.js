@@ -1,6 +1,6 @@
 /* Service worker: guarda o app para funcionar offline. Troque VERSION ao publicar mudanças. */
-const VERSION = 'ym-v4';
-const FILES = ['./', './index.html', './style.css', './app.js', './data.js', './kanji.js', './prep.js', './audio/index.js', './pos.js', './drinks.js', './audio/pos.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const VERSION = 'ym-v6';
+const FILES = ['./', './index.html', './style.css', './app.js', './data.js', './kanji.js', './prep.js', './audio/index.js', './pos.js', './drinks.js', './cond.js', './audio/pos.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));

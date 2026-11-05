@@ -94,7 +94,47 @@ if (fs.existsSync(posPath)) {
   for (const t of PO.tables) if (PO.tableSay[t] && Object.keys(PA).length && !PA[PO.tableSay[t][1]]) err('mesa sem áudio ' + t);
   console.log('caixa: ' + PO.cats.length + ' categorias, ' + n + ' botões, ' + targets + ' podem cair no jogo');
 }
+const PA = ctx.window.POS_AUDIO || {}, hasPA = Object.keys(PA).length > 0;
+const posLabels = new Set(ctx.window.POS ? ctx.window.POS.cats.flatMap(c => c.items.map(it => it[0])) : []);
+if (ctx.window.POS) ctx.window.POS.say.qty.forEach(q => { if (q && hasPA && !PA[q[0]]) err('quantidade sem áudio: ' + q[0]); });
 const drPath = path.join(__dirname, '..', 'drinks.js');
-if (fs.existsSync(drPath)) { vm.runInContext(fs.readFileSync(drPath, 'utf8'), ctx); const D = ctx.window.DRINKS; if (!D || !D.sours || !D.sours.length) err('drinks.js vazio'); }
+if (fs.existsSync(drPath)) {
+  vm.runInContext(fs.readFileSync(drPath, 'utf8'), ctx);
+  const D = ctx.window.DRINKS;
+  if (!D || !D.drinks || !D.drinks.length) err('drinks.js vazio');
+  else {
+    for (const d of D.drinks) {
+      if (!D.glasses[d.glass - 1]) err('bebida com copo inválido: ' + d.id);
+      if (!D.alc[d.alc]) err('bebida com álcool inválido: ' + d.id);
+      if (!D.mix[d.mix]) err('bebida com complemento inválido: ' + d.id);
+      if (!D.groups.some(g => g[0] === d.group)) err('bebida sem grupo: ' + d.id);
+      const tot = (d.layers || []).reduce((a, l) => a + l[1], 0); if (tot > 1.001) err('camadas passam de 100%: ' + d.id);
+      if (!d.nopos && !posLabels.has(d.pos)) err('bebida não existe no caixa: ' + d.pos);
+      if (d.say && hasPA && !PA[d.say]) err('bebida sem áudio: ' + d.say);
+    }
+    console.log('drinks: ' + D.drinks.length + ' cartões');
+  }
+}
+const cdPath = path.join(__dirname, '..', 'cond.js');
+if (fs.existsSync(cdPath)) {
+  vm.runInContext(fs.readFileSync(cdPath, 'utf8'), ctx);
+  const C = ctx.window.COND;
+  if (!C || !C.rules || !C.rules.length) err('cond.js vazio');
+  else {
+    for (const r of C.rules) {
+      const dsh = C.dishes[r.dish];
+      if (!dsh) { err('pratinho inválido: ' + r.id); continue; }
+      if (r.parts.length !== dsh.parts) err('número de divisões errado: ' + r.id);
+      r.parts.flat().forEach(k => { if (!C.sauces[k]) err('condimento inválido ' + k + ' em ' + r.id); });
+      (r.extra || []).forEach(x => { if (!C.dishes[x.dish]) err('pratinho extra inválido: ' + r.id); x.parts.flat().forEach(k => { if (!C.sauces[k]) err('condimento inválido ' + k + ' em ' + r.id); }); });
+      (r.pos || []).forEach(l => { if (!posLabels.has(l)) err('prato não existe no caixa: ' + l + ' (' + r.id + ')'); });
+      if (r.say && hasPA && !PA[r.say[0]]) err('frase sem áudio: ' + r.say[0]);
+      if (r.k && hasPA && !PA[r.name]) err('nome sem áudio: ' + r.name);
+    }
+    (C.families || []).forEach(f => f.rules.forEach(id => { if (!C.rules.some(r => r.id === id)) err('família com prato inválido: ' + id); }));
+    (C.phrases || []).forEach(p => { if (hasPA && !PA[p[0]]) err('frase sem áudio: ' + p[0]); });
+    console.log('molhos: ' + C.rules.length + ' regras');
+  }
+}
 console.log(errors ? `\n${errors} erro(s)` : '\nOK');
 process.exit(errors ? 1 : 0);

@@ -70,7 +70,7 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
   };
-  const DEF = { newPerDay: 15, furiFront: false, romaji: true, dir: 'jp', auto: false, theme: 'auto', rate: 0.85, voice: 'rec', pitch: true, shift: P.shift || '', posText: false, drinkQuiz: false };
+  const DEF = { newPerDay: 15, furiFront: false, romaji: true, dir: 'jp', auto: false, theme: 'auto', rate: 0.85, voice: 'rec', pitch: true, shift: P.shift || '', posText: false, drinkQuiz: false, posSeat: 'mix', posPeople: 'auto', posItems: 'pair' };
   let S = LS.get('ym.srs', {});
   let LOG = LS.get('ym.log', {});
   let DAILY = LS.get('ym.daily', { d: 0, n: 0 });
@@ -86,6 +86,7 @@
   /* ---------- cartas ---------- */
   const CAT = {}; M.CATS.forEach(c => CAT[c.id] = c);
   CAT.kanji = { id: 'kanji', name: 'Kanji do cardápio', emoji: '漢', kind: 'vocab' };
+  CAT.cond = { id: 'cond', name: 'Molhos: o pratinho de cada prato', emoji: '🥢', kind: 'cond' };
   const cards = [], byId = {};
   const add = c => { c.kind = CAT[c.cat].kind; cards.push(c); byId[c.id] = c; };
   M.CATS.forEach(cat => {
@@ -95,8 +96,11 @@
       M.ITEMS.filter(it => it.cat === cat.id).forEach(it => add(Object.assign({ id: it.cat + ':' + plain(it.jp), w: [] }, it)));
     }
   });
+  // uma carta por prato da seção Molhos: frente = o prato, verso = o pratinho montado
+  if (window.COND) window.COND.rules.filter(r => r.drill !== false).forEach(r => add({ id: 'cond:' + r.id, cat: 'cond', jp: r.rb || r.name, pt: r.pt, cond: r.id, w: [] }));
   const kcount = {}, kwords = {}, ingUsers = {};
   cards.forEach(c => {
+    if (c.cond) return;
     kanjiOf(plain(c.jp)).forEach(k => { kcount[k] = (kcount[k] || 0) + 1; (kwords[k] = kwords[k] || []).push(c.id); });
     (c.ing || []).forEach(g => { if (g[0] !== '~') (ingUsers[g] = ingUsers[g] || []).push(c.id); });
   });
@@ -199,6 +203,7 @@
   }
   const sayText = c => c.kanji ? [(c.on || '').split('、')[0], (c.kun || '').split('、')[0].replace(/[.\-]/g, '')].filter(Boolean).join('、') : reading(c.jp);
   function speakCard(c) {
+    if (c.cond) { const r = window.COND.rules.find(x => x.id === c.cond); posSpeak([r.name]); return; }
     const a = AUD[c.id];
     if (SET.voice === 'device' || !a) { ttsSay(sayText(c)); return; }
     playEntry(a).catch(() => { toast('Áudio gravado indisponível (offline?) — usando a voz do aparelho.'); ttsSay(sayText(c)); });
@@ -327,9 +332,9 @@
     if (sd !== null && sd >= 0) h += '<button class="banner" data-act="tab" data-tab="prep">🔪 ' + (sd === 0 ? '<b>Hoje é o 1º turno!</b> がんばって！' : '1º turno em <b>' + sd + ' dia' + (sd > 1 ? 's' : '') + '</b> — abrir o plano da cozinha') + ' ›</button>';
     h += '<div class="panel hero"><div class="nums"><div><b>' + allDue + '</b><span class="small muted">para revisar</span></div><div><b>' + Math.min(nl, unseen) + '</b><span class="small muted">novos hoje</span></div><div><b>' + learned + '/' + cards.length + '</b><span class="small muted">vistos</span></div></div>' +
       '<button class="btn primary" data-act="deck" data-f="all">Estudar agora</button></div>';
-    h += '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="tab" data-tab="quiz">❓ Quiz</button><button class="btn sm" data-act="deck" data-f="kind:vocab">📖 Só vocabulário</button><button class="btn sm" data-act="deck" data-f="kind:food">🍽️ Só comidas</button><button class="btn sm" data-act="deck" data-f="kind:drink">🍺 Só bebidas</button></div>';
+    h += '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="tab" data-tab="quiz">❓ Quiz</button><button class="btn sm" data-act="tab" data-tab="kanji">漢 Kanji</button><button class="btn sm" data-act="deck" data-f="kind:vocab">📖 Só vocabulário</button><button class="btn sm" data-act="deck" data-f="kind:food">🍽️ Só comidas</button><button class="btn sm" data-act="deck" data-f="kind:drink">🍺 Só bebidas</button></div>';
     h += '<h2>Baralhos</h2>';
-    M.CATS.map(c => c.id).concat('kanji').forEach(id => {
+    M.CATS.map(c => c.id).concat(cards.some(c => c.cond) ? ['cond'] : [], 'kanji').forEach(id => {
       const cs = cards.filter(c => c.cat === id), cat = CAT[id];
       const seen = cs.filter(c => S[c.id] && S[c.id].r > 0).length, due = dueCards(cs).length, nw = cs.filter(c => !S[c.id]).length;
       h += '<button class="deck" data-act="deck" data-f="cat:' + id + '"><span class="em">' + cat.emoji + '</span><span class="nm">' + esc(cat.name) +
@@ -359,6 +364,16 @@
     h += '<div class="card"' + (s.show ? '' : ' data-act="reveal"') + '>';
     h += '<span class="cat">' + CAT[c.cat].emoji + ' ' + esc(CAT[c.cat].name) + (st ? '' : ' · <b>novo</b>') + '</span>';
     h += '<button class="btn sm say" data-act="say" data-id="' + esc(c.id) + '" aria-label="ouvir">🔊</button>';
+    if (c.cond) {
+      const r = CD.rules.find(x => x.id === c.cond);
+      h += '<div class="small muted">Qual pratinho, e o que vai nele?</div><div class="big jp">' + ruby(c.jp, true) + '</div><div class="small muted">' + esc(c.pt) + '</div>';
+      if (!s.show) h += '<div class="hint">pense na resposta e toque para conferir</div>';
+      else h += '<hr>' + condAnswer(r);
+      h += '</div>';
+      if (s.show) { const names = ['Errei', 'Difícil', 'Bom', 'Fácil']; h += '<div class="answers">' + names.map((n, g) => '<button class="a' + g + '" data-act="grade" data-g="' + g + '">' + n + '<small>' + ilabel(nextState(st, g).i) + '</small></button>').join('') + '</div>'; }
+      else h += '<button class="btn primary block" style="margin-top:12px" data-act="reveal">Mostrar resposta</button>';
+      return h;
+    }
     if (!flip) { h += jpBlock(c, SET.furiFront || s.show); if (s.show) h += romajiLine(c) + pitchHtml(c); }
     else h += '<div class="ptbig">' + esc(c.pt) + '</div>';
     if (!s.show) h += '<div class="hint">toque para ver a resposta</div>';
@@ -485,7 +500,7 @@
   /* ---------- tela: cardápio ---------- */
   function menuList() {
     const qn = norm(ui.mq.trim());
-    const list = cards.filter(c => !c.kanji && (ui.mcat === 'all' || c.cat === ui.mcat) && (!qn || hay(c).includes(qn)));
+    const list = cards.filter(c => !c.kanji && !c.cond && (ui.mcat === 'all' || c.cat === ui.mcat) && (!qn || hay(c).includes(qn)));
     if (!list.length) return '<p class="muted">Nada encontrado.</p>';
     let h = '', cur = '';
     list.forEach(c => {
@@ -546,7 +561,7 @@
     return h + '</div>';
   }
   function startQuiz(f, m) {
-    let pool = cards.filter(filterFn(f)).filter(c => f === 'all' ? !c.kanji : true);
+    let pool = cards.filter(filterFn(f)).filter(c => !c.cond && (f === 'all' ? !c.kanji : true));
     if (m === 'read') pool = pool.filter(c => c.kanji || /\{/.test(c.jp));
     if (m === 'listen') pool = pool.filter(c => !c.kanji);
     if (pool.length < 4) { toast('Poucas cartas nesse baralho para esse tipo de quiz.'); return false; }
@@ -580,6 +595,11 @@
   const isDrink = x => DRINK_CATS.includes(PO.cats[x.ci].name);
   const rint = n => Math.floor(Math.random() * n);
   const pick = a => a[rint(a.length)];
+  const NOT_FOOD = ['DESSERT', 'SET MENU', 'ボトル白', 'ボトル赤', '泡', 'その他', '紐付け触らない', 'ウーバー、ロケットナウ'];
+  const isFood = x => !isDrink(x) && !NOT_FOOD.includes(PO.cats[x.ci].name);
+  const POP = (PO && PO.pop) || {};
+  const wpick = arr => { let r = Math.random() * arr.reduce((a, x) => a + (POP[x.s] || 1), 0); for (const x of arr) { r -= POP[x.s] || 1; if (r <= 0) return x; } return arr[arr.length - 1]; };
+  const wchoice = pairs => { let r = Math.random() * pairs.reduce((a, p) => a + p[1], 0); for (const p of pairs) { r -= p[1]; if (r <= 0) return p[0]; } return pairs[0][0]; };
 
   let posBuf = null, posSrcs = [];
   const posDec = {};
@@ -613,30 +633,41 @@
       }
       return { table: 'T,O', guests: 0, items: [{ key: POSI.find(x => x.to).key, n: 1 + rint(3) }], intro: PO.say.to[0] };
     }
-    const tables = PO.tables.filter(t => PO.tableSay[t]);
-    const guests = level === 3 ? 2 + rint(5) : 1 + rint(4);
-    const pool = POSI.filter(x => x.lv > 0 && x.lv <= level && !x.course && (x.g === 0 || (x.g === 2 ? guests <= 2 : guests >= 3)));
-    let items;
-    if (level === 3 && Math.random() < 0.2) {
-      const course = pick(POSI.filter(x => x.course && x.lv > 0 && x.lv <= 3));
-      items = [{ key: course.key, n: guests }].concat(shuffle(pool.filter(isDrink)).slice(0, 1 + rint(2)).map(x => ({ key: x.key, n: 1 + rint(Math.min(guests, 3)) })));
-    } else {
-      const n = level === 1 ? 1 : level === 2 ? 2 + rint(2) : 3 + rint(3);
-      let chosen = shuffle(pool).slice(0, n);
-      if (level >= 2 && !chosen.some(isDrink)) chosen[chosen.length - 1] = pick(pool.filter(isDrink));
-      chosen = chosen.filter((x, i) => chosen.indexOf(x) === i);
-      items = chosen.map(x => ({ key: x.key, n: level === 1 ? 1 : level === 2 ? 1 + rint(2) : 1 + rint(Math.min(4, guests)) }));
+    // como na loja: a maioria é balcão (C), quase sempre 2 pessoas, cada uma pede 1 bebida + 1 comida
+    const cu = kind === 'custom';
+    const seat = cu ? SET.posSeat : 'mix';
+    const isC = seat === 'C' ? true : seat === 'T' ? false : Math.random() < 0.75;
+    const table = pick(PO.tables.filter(t => PO.tableSay[t] && t[0] === (isC ? 'C' : 'T')));
+    const guests = cu && +SET.posPeople ? +SET.posPeople : isC ? wchoice([[2, 78], [1, 12], [3, 10]]) : wchoice([[2, 40], [3, 30], [4, 30]]);
+    const style = cu ? SET.posItems : level === 1 ? 'drink' : level === 2 ? 'pair' : 'more';
+    const maxLv = cu ? (style === 'more' ? 3 : 2) : level;
+    const fit = x => x.lv > 0 && x.lv <= maxLv && !x.course && (x.g === 0 || (x.g === 2 ? guests === 2 : guests >= 3));
+    const drinks = POSI.filter(x => fit(x) && isDrink(x)), foods = POSI.filter(x => fit(x) && isFood(x));
+    const bag = [];
+    let course = null;
+    if (style === 'more' && Math.random() < 0.15) {
+      course = pick(POSI.filter(x => x.course && x.lv > 0 && x.lv <= 3 && x.s !== '飲み放題'));
+      for (let i = 0; i < guests; i++) bag.push(course);
     }
-    return { table: pick(tables), guests, items };
+    for (let i = 0; i < guests; i++) bag.push(wpick(drinks));
+    if (style !== 'drink' && !course) {
+      let left = guests;
+      while (left > 0) { const f = wpick(foods.filter(x => !x.g || left >= (x.g === 34 ? 3 : 2))); bag.push(f); left -= f.g === 34 ? 3 : f.g === 2 ? 2 : 1; }
+    }
+    if (style === 'more' && !course) { const ex = POSI.filter(x => fit(x) && x.lv >= 2 && !bag.includes(x)); for (let i = 1 + rint(2); i > 0 && ex.length; i--) bag.push(wpick(ex)); }
+    const items = [];
+    bag.forEach(x => { const it = items.find(y => y.key === x.key); if (it) it.n++; else items.push({ key: x.key, n: 1 }); });
+    return { table, guests, items };
   }
   const posExpected = o => (o.guests && OTOSHI ? [{ key: OTOSHI.key, n: o.guests }] : []).concat(o.items);
+  // fala só a mesa e os itens; o número de pessoas aparece desenhado na tela
   function posSeq(o) {
-    const seq = [];
-    if (o.intro) seq.push(o.intro);
-    else { seq.push(PO.tableSay[o.table][1]); seq.push(PO.say.guests[o.guests][0]); }
-    o.items.forEach(it => { const x = POSK[it.key]; seq.push(x.s); seq.push(x.course ? PO.say.guests[it.n][0] : PO.say.qty[it.n][0]); });
+    const seq = [o.intro || PO.tableSay[o.table][1]];
+    o.items.forEach(it => { seq.push(POSK[it.key].s); seq.push(PO.say.qty[Math.min(it.n, PO.say.qty.length - 1)][0]); });
     return seq;
   }
+  const personSvg = '<svg viewBox="0 0 20 24" width="20" height="24" aria-hidden="true"><circle cx="10" cy="6" r="5" fill="currentColor"/><path d="M1 23c0-6 4-9.5 9-9.5s9 3.5 9 9.5z" fill="currentColor"/></svg>';
+  const peopleHtml = n => '<span class="who" title="' + n + ' pessoa' + (n > 1 ? 's' : '') + '">' + personSvg.repeat(n) + '<b>' + n + '</b><span class="small">pessoa' + (n > 1 ? 's' : '') + '</span></span>';
   function posStart(kind, level) {
     const ord = kind === 'free' ? null : posNewOrder(kind, level);
     ui.pos = { kind, level, ord, screen: 'tables', cat: null, table: null, lines: [], seq: [], hints: 0, errs: 0, locked: 0, t0: Date.now(), res: null, showText: !!SET.posText, hintSel: null, badSel: null };
@@ -674,21 +705,28 @@
   }
   const yenP = n => n.toLocaleString('en-US') + '円';
   function posOrderText(o) {
-    let h = '<div class="pos-ord"><b>' + esc(o.intro ? o.intro : o.table + ' · ' + PO.say.guests[o.guests][0] + '（' + PO.say.guests[o.guests][1] + '）') + '</b><ul class="tight">';
+    let h = '<div class="pos-ord"><b>' + esc(o.intro ? o.intro : o.table + ' · ' + o.guests + ' pessoa' + (o.guests > 1 ? 's' : '') + ' → お通し ×' + o.guests) + '</b><ul class="tight">';
     o.items.forEach(it => { const x = POSK[it.key]; h += '<li><span class="jp">' + esc(x.s) + '</span>' + (x.k && x.k !== x.s ? ' <span class="muted">（' + esc(x.k) + '）</span>' : '') + ' ×' + it.n + ' <span class="muted small">' + esc(x.pt) + '</span></li>'; });
     return h + '</ul></div>';
   }
   function posMenu() {
     const st = Object.assign({ n: 0, ok: 0, perfect: 0, streak: 0, best: 0 }, PS.pos || {});
     let h = '<div class="panel"><h2 style="margin-top:0">🧾 Prática do caixa</h2>' +
-      '<p>Você ouve o pedido e registra no caixa como no trabalho:</p><ol class="tight"><li>Toque na mesa certa.</li><li><b>その他 → お通し</b>, uma vez por pessoa (a taxa da mesa vem primeiro).</li><li>Os itens, na quantidade pedida.</li><li><b>登録</b> para registrar.</li></ol>' +
+      '<p>Você ouve a mesa e o pedido, e <b>vê quantas pessoas são</b> (os bonequinhos ' + peopleHtml(2) + '). Registre como no trabalho:</p><ol class="tight"><li>Toque na mesa certa.</li><li><b>その他 → お通し</b>, uma vez por pessoa (a taxa da mesa vem primeiro).</li><li>Os itens, na quantidade pedida.</li><li><b>登録</b> para registrar.</li></ol>' +
+      '<p class="small muted">Como na loja: a maioria dos pedidos é no balcão (C1–C5), quase sempre de 2 pessoas, e cada uma pede 1 bebida e 1 comida. Bebidas iguais viram uma linha só (角ハイ ふたつ = 角ハイ ×2).</p>' +
       '<p class="small muted">🔊 repete o pedido. <b>?</b> pisca o botão certo só na tela em que você está: na tela das categorias mostra a categoria; dentro dela, o item. Tocar numa linha do pedido (à direita) tira uma unidade.</p></div>';
     h += '<div class="pos-levels">' +
-      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="1"><span class="em">1</span><span class="nm">Nível 1<div class="small muted">1 item por pedido</div></span></button>' +
-      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="2"><span class="em">2</span><span class="nm">Nível 2<div class="small muted">2–3 itens, com bebida e quantidades</div></span></button>' +
-      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="3"><span class="em">3</span><span class="nm">Nível 3<div class="small muted">3–5 itens, porções 2名様 / 3〜4名様, garrafas e cursos</div></span></button>' +
+      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="1"><span class="em">1</span><span class="nm">Nível 1: a 1ª rodada<div class="small muted">Só bebidas, 1 por pessoa</div></span></button>' +
+      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="2"><span class="em">2</span><span class="nm">Nível 2: pedido normal<div class="small muted">1 bebida + 1 comida por pessoa</div></span></button>' +
+      '<button class="deck" data-act="posgo" data-kind="hall" data-lv="3"><span class="em">3</span><span class="nm">Nível 3: pedido grande<div class="small muted">Mais itens, porções 2名様 / 3〜4名様, R, garrafas e cursos</div></span></button>' +
       '<button class="deck" data-act="posgo" data-kind="delivery" data-lv="0"><span class="em">🛵</span><span class="nm">Entrega e para viagem<div class="small muted">配達 + categoria ウーバー · T,O</div></span></button>' +
       '<button class="deck" data-act="posgo" data-kind="free" data-lv="0"><span class="em">🧭</span><span class="nm">Explorar o caixa<div class="small muted">Sem pedido: navegue pelas telas à vontade</div></span></button></div>';
+    const opt = (k, v, l) => '<option value="' + v + '"' + (String(SET[k]) === String(v) ? ' selected' : '') + '>' + l + '</option>';
+    h += '<div class="panel"><h3 style="margin-top:0">🎛 Pedido personalizado</h3><p class="small muted">Escolha você o lugar, as pessoas e o tamanho do pedido.</p><div class="pos-cu">' +
+      '<label>Lugar<select data-set="posSeat">' + opt('posSeat', 'mix', 'Como na loja (¾ balcão)') + opt('posSeat', 'C', 'Só balcão (C)') + opt('posSeat', 'T', 'Só mesa (T)') + '</select></label>' +
+      '<label>Pessoas<select data-set="posPeople">' + opt('posPeople', 'auto', 'Como na loja') + [1, 2, 3, 4, 5, 6].map(n => opt('posPeople', n, n)).join('') + '</select></label>' +
+      '<label>Pedido<select data-set="posItems">' + opt('posItems', 'drink', '1 bebida por pessoa') + opt('posItems', 'pair', '1 bebida + 1 comida por pessoa') + opt('posItems', 'more', 'Pedido grande') + '</select></label>' +
+      '</div><button class="btn primary" data-act="posgo" data-kind="custom" data-lv="0">Jogar personalizado</button></div>';
     h += '<label class="set">Mostrar o texto do pedido desde o início<input type="checkbox" data-set="posText"' + (SET.posText ? ' checked' : '') + '></label>';
     h += '<p class="small muted">Jogados: ' + st.n + ' · certos: ' + st.ok + ' · perfeitos (sem dica e sem erro): ' + st.perfect + ' · sequência: ' + st.streak + ' (recorde ' + st.best + ')</p>';
     h += '<p class="small muted">Montado a partir das fotos do caixa de 03/11. KOROKORO YAKI, ソフドリ e ボトル赤 ainda não têm foto: usam os nomes do cardápio. A fala dos itens com R / Half / Regular / 2名様 é uma suposição minha de como a equipe fala.</p>';
@@ -698,7 +736,8 @@
     const z = ui.pos, cats = PO.cats;
     let h = '<div class="pos-bar">';
     if (z.ord) h += '<button class="btn sm primary" data-act="posplay">🔊 Ouvir de novo</button><button class="btn sm" data-act="poshint">? Dica</button><button class="btn sm" data-act="postext">👁 ' + (z.showText ? 'Esconder' : 'Ver') + ' texto</button>';
-    h += '<span class="small muted">' + (z.kind === 'free' ? 'Modo livre' : z.kind === 'delivery' ? 'Entrega' : 'Nível ' + z.level) + (z.ord ? ' · dicas ' + z.hints + ' · erros ' + (z.errs + z.locked) : '') + '</span><button class="btn sm" data-act="posquit">Sair</button></div>';
+    if (z.ord && z.ord.guests) h += peopleHtml(z.ord.guests);
+    h += '<span class="small muted">' + (z.kind === 'free' ? 'Modo livre' : z.kind === 'delivery' ? 'Entrega' : z.kind === 'custom' ? 'Personalizado' : 'Nível ' + z.level) + (z.ord ? ' · dicas ' + z.hints + ' · erros ' + (z.errs + z.locked) : '') + '</span><button class="btn sm" data-act="posquit">Sair</button></div>';
     if (z.ord && z.showText) h += posOrderText(z.ord);
     let title, grid = '', back = z.screen !== 'tables';
     if (z.screen === 'tables') {
@@ -740,23 +779,282 @@
     return posBoard();
   }
 
+  /* ---------- desenhos (SVG) ---------- */
+  let svgN = 0;
+  const GL = {
+    pils: { o: 'M19 8 H41 L36.5 90 Q30 93 23.5 90 Z', top: 14, bot: 91 },
+    mug: { o: 'M11 16 H43 V87 Q43 92 38 92 H16 Q11 92 11 87 Z', top: 21, bot: 92, h: 'M43 30 H50 Q55 30 55 35 V64 Q55 69 50 69 H43' },
+    tumbler: { o: 'M13 12 H47 L44 90 Q30 93 16 90 Z', top: 18, bot: 91 }
+  };
+  const ICE = [[17, 66], [31, 70], [23, 50], [33, 46], [18, 32], [31, 26]];
+  // conteúdo de um copo: camadas [cor, fração] de baixo para cima; o.ice / o.bubbles / o.fruit; o.rot inclina o copo (o líquido fica nivelado)
+  function glassG(shape, layers, o) {
+    o = o || {};
+    const g = GL[shape], id = 'gc' + (++svgN), H = g.bot - g.top, rot = o.rot ? ' transform="rotate(' + o.rot + ' 30 60)"' : '';
+    let y = o.rot ? 100 : g.bot, fill = '';
+    (layers || []).forEach(([c, f]) => { const h = (o.rot ? 70 : H) * f; y -= h; fill += '<rect x="-20" y="' + y.toFixed(1) + '" width="100" height="' + (h + .6).toFixed(1) + '" fill="' + c + '"/>'; });
+    const lvl = y;
+    if (o.ice) ICE.forEach(([x, yy], i) => { if (yy + 6 < lvl - 4 && !(o.iceAll)) return; fill += '<rect x="' + x + '" y="' + yy + '" width="12" height="12" rx="2.5" transform="rotate(' + (i * 23 % 40 - 20) + ' ' + (x + 6) + ' ' + (yy + 6) + ')" fill="rgba(255,255,255,.28)" stroke="rgba(80,120,150,.7)" stroke-width="1"/>'; });
+    if (o.bubbles) [[20, 80], [38, 66], [26, 50], [40, 36], [22, 30], [35, 84]].forEach(([x, yy]) => { if (yy > lvl) fill += '<circle cx="' + x + '" cy="' + yy + '" r="1.4" fill="none" stroke="rgba(255,255,255,.95)" stroke-width=".9"/>'; });
+    if (o.fruit) fill += '<circle cx="36" cy="' + (lvl + 9) + '" r="7" fill="#f6e27a" stroke="#c9a400" stroke-width="1"/><path d="M36 ' + (lvl + 2) + 'v14M29 ' + (lvl + 9) + 'h14" stroke="#c9a400" stroke-width=".8"/>';
+    return '<defs><clipPath id="' + id + '"><path d="' + g.o + '"' + rot + '/></clipPath></defs><g clip-path="url(#' + id + ')">' + fill + '</g>' +
+      '<path d="' + g.o + '"' + rot + ' fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' + (g.h ? '<path d="' + g.h + '"' + rot + ' fill="none" stroke="currentColor" stroke-width="2.4"/>' : '');
+  }
+  const glassSvg = (shape, layers, o, w) => '<svg class="glass" viewBox="0 0 60 100" width="' + (w || 54) + '" height="' + Math.round((w || 54) * 100 / 60) + '" aria-hidden="true">' + glassG(shape, layers, o) + '</svg>';
+  // copinho medidor: lado grande (45) em cima, lado pequeno (30) embaixo
+  const jigSvg = (big, small) => '<svg class="jig" viewBox="0 0 24 30" width="17" height="21" aria-hidden="true"><path d="M2 2 H22 L13.6 15 H10.4 Z" fill="' + (big ? 'var(--accent)' : 'none') + '" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10.4 16.5 H13.6 L18.5 28 H5.5 Z" fill="' + (small ? 'var(--accent)' : 'none') + '" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  const doseIcon = d => d === '45' ? jigSvg(1, 0) : d === '30' ? jigSvg(0, 1) : d === '45+30' ? jigSvg(1, 0) + jigSvg(0, 1) : d === '60' ? jigSvg(0, 1) + jigSvg(0, 1) : '';
+  const doseChip = d => d ? '<span class="dose" data-act="dose">' + doseIcon(d) + '<b>' + esc(d) + '</b></span>' : '';
+  const GN = ['', '①', '②', '③'];
+
   /* ---------- tela: drinks ---------- */
-  const doseHtml = s => esc(s).replace(/(\d+(?:\+\d+)?)(\s?ml)?/g, '<span class="dose" data-act="dose">$1$2</span>');
+  function leverSvg() {
+    const tap = (x, top, bot, lab) => '<rect x="' + (x - 8) + '" y="6" width="16" height="44" rx="5" fill="' + top + '" stroke="currentColor" stroke-width="1.8"/>' +
+      (bot ? '<rect x="' + (x - 8) + '" y="28" width="16" height="22" rx="0" fill="' + bot + '" stroke="currentColor" stroke-width="1.8"/><rect x="' + (x - 8) + '" y="6" width="16" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/>' : '') +
+      '<rect x="' + (x - 5) + '" y="96" width="10" height="20" rx="2" fill="currentColor"/><text x="' + x + '" y="78" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor">' + lab + '</text>';
+    return '<svg class="lever" viewBox="0 0 300 140" role="img" aria-label="Máquina com 3 alavancas: esquerda, meio e direita">' +
+      '<rect x="20" y="50" width="260" height="46" rx="10" fill="var(--soft)" stroke="currentColor" stroke-width="1.8"/>' +
+      tap(70, '#f0d27e', '', 'esq.') + tap(150, '#e8ae2c', '#fffaf0', 'meio') + tap(230, '#efe9d8', '#9fd3e6', 'dir.') +
+      '<rect x="20" y="124" width="260" height="10" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 3"/></svg>';
+  }
+  function shelfSvg() {
+    const G = DR.glasses;
+    let s = '<svg class="shelf" viewBox="0 0 300 250" role="img" aria-label="Prateleira com os 3 copos">';
+    G.forEach((g, i) => {
+      const y = 8 + i * 80;
+      s += '<line x1="10" x2="290" y1="' + (y + 74) + '" y2="' + (y + 74) + '" stroke="currentColor" stroke-width="3"/>';
+      [0, 1, 2].forEach(k => { s += '<g transform="translate(' + (20 + k * 44) + ' ' + y + ') scale(.72)">' + glassG(g.shape, [], {}) + '</g>'; });
+      s += '<text x="160" y="' + (y + 38) + '" font-size="26" font-weight="800" fill="var(--accent)">' + GN[g.n] + '</text><text x="200" y="' + (y + 34) + '" font-size="13" fill="currentColor">' + esc(g.where) + '</text>';
+    });
+    return s + '</svg>';
+  }
+  function beerSvg() {
+    const p = (tx, inner, cap) => '<g transform="translate(' + tx + ' 0)"><rect x="24" y="0" width="12" height="10" rx="2" fill="currentColor"/>' + inner + '<text x="30" y="128" text-anchor="middle" font-size="11" fill="currentColor">' + cap + '</text></g>';
+    const g = (layers, o) => '<g transform="translate(0 20)">' + glassG('mug', layers, o) + '</g>';
+    return '<svg class="beer" viewBox="-16 0 332 134" role="img" aria-label="Cerveja em 3 passos: copo inclinado, endireitar, espuma 8 para 2">' +
+      p(10, '<path d="M30 10 V40" stroke="#e8ae2c" stroke-width="3"/>' + g([['#e8ae2c', .35]], { rot: -35 }), '1. copo inclinado') +
+      p(110, '<path d="M30 10 V28" stroke="#e8ae2c" stroke-width="3"/>' + g([['#e8ae2c', .8]], {}), '2. endireite: 8') +
+      p(210, g([['#e8ae2c', .78], ['#fffaf0', .2]], {}) + '<text x="64" y="44" font-size="12" font-weight="700" fill="var(--accent)">2</text><text x="64" y="84" font-size="12" font-weight="700" fill="var(--accent)">8</text>', '3. espuma: 2') +
+      '</svg>';
+  }
+  function drinkCard(d) {
+    const A = DR.alc[d.alc], X = DR.mix[d.mix], gl = DR.glasses[d.glass - 1];
+    const dot = c => c ? '<i class="dot" style="background:' + c + '"></i>' : '';
+    const can = d.say && PA[d.say];
+    let h = '<div class="panel dcard' + (d.check ? ' chk' : '') + '"><div class="dc-top"><div class="dc-gl">' + glassSvg(gl.shape, d.layers, { ice: d.ice, bubbles: d.bubbles, fruit: d.fruit }, 66) + '<span class="gn">' + GN[d.glass] + '</span></div>' +
+      '<div class="dc-nm"><b class="jp">' + esc(d.say || d.pos) + '</b>' + (can ? ' <button class="btn sm" data-act="dsay" data-s="' + esc(d.say) + '" aria-label="ouvir">🔊</button>' : '') +
+      (d.nopos ? '' : '<div class="small muted">caixa: ' + esc(d.pos) + '</div>') + (d.check ? '<div><span class="badge warn">confirme</span></div>' : '') + '</div></div>';
+    h += '<ol class="steps5">' +
+      '<li><span class="sn">1</span><span class="sv"><b>Copo ' + GN[d.glass] + '</b> <span class="muted">' + esc(gl.where) + '</span></span></li>' +
+      '<li><span class="sn">2</span><span class="sv">' + (d.ice ? '🧊 <b>gelo até a boca</b>' : '<b>sem gelo</b>') + (d.first ? '<br>' + esc(d.first) : '') + '</span></li>' +
+      '<li><span class="sn">3</span><span class="sv">' + (d.alc === 'none' ? '<span class="muted">sem álcool</span>' : dot(A.c) + '<b class="jp">' + esc(A.t) + '</b> ' + doseChip(d.dose) + '<br><span class="muted small">' + esc(A.how) + '</span>') + '</span></li>' +
+      '<li><span class="sn">4</span><span class="sv">' + dot(X.c) + '<b class="jp">' + esc(X.t) + '</b><br><span class="muted small">' + esc(X.how) + '</span></span></li>' +
+      '<li><span class="sn">5</span><span class="sv">' + (d.end ? esc(d.end) : '<span class="muted">servir</span>') + '</span></li></ol>';
+    if (d.tip) h += '<p class="small" style="margin:6px 0 0">' + esc(d.tip) + '</p>';
+    return h + '</div>';
+  }
+  function dqNew() {
+    const pool = DR.drinks.filter(d => !d.check && (!ui.dq || d.id !== ui.dq.id));
+    const d = pick(pool);
+    const alt = (obj, right, ban) => shuffle([right].concat(shuffle(Object.keys(obj).filter(k => k !== right && !ban.includes(k) && obj[k].t !== obj[right].t)).slice(0, 3)));
+    const same = { sour: ['base'], base: ['sour'], soda: ['ume'], ume: ['soda'] };
+    ui.dq = { id: d.id, sel: {}, done: false, opts: { glass: [1, 2, 3], ice: [true, false], alc: alt(DR.alc, d.alc, same[d.alc] || []), mix: alt(DR.mix, d.mix, (same[d.mix] || []).concat('honey')) } };
+    render();
+    if (d.say && PA[d.say]) posSpeak([d.say]);
+  }
+  function dqHtml() {
+    const z = ui.dq, d = DR.drinks.find(x => x.id === z.id);
+    const want = { glass: d.glass, ice: d.ice, alc: d.alc, mix: d.mix };
+    const rows = [['glass', 'Copo'], ['ice', 'Gelo'], ['alc', 'Álcool'], ['mix', 'Complemento']];
+    const lab = (k, v) => k === 'glass' ? glassSvg(DR.glasses[v - 1].shape, [], {}, 26) + '<b>' + GN[v] + '</b>' : k === 'ice' ? (v ? '🧊 com gelo' : 'sem gelo') : esc((k === 'alc' ? DR.alc : DR.mix)[v].t);
+    let h = '<div class="panel dq"><div class="dq-head"><div><div class="small muted">Monte a bebida</div><b class="jp dq-name">' + esc(d.say || d.pos) + '</b></div>' +
+      (d.say && PA[d.say] ? '<button class="btn sm" data-act="dsay" data-s="' + esc(d.say) + '">🔊</button>' : '') + '<button class="btn sm" data-act="dqquit">Fechar</button></div>';
+    rows.forEach(([k, t]) => {
+      h += '<div class="dq-row"><span class="dq-k">' + t + '</span><div class="dq-opts">' + z.opts[k].map(v => {
+        const on = z.sel[k] === v, ok = z.done && v === want[k], bad = z.done && on && v !== want[k];
+        return '<button class="dq-o' + (on ? ' on' : '') + (ok ? ' ok' : '') + (bad ? ' no' : '') + '" data-act="dqpick" data-k="' + k + '" data-v="' + esc(String(v)) + '"' + (z.done ? ' disabled' : '') + '>' + lab(k, v) + '</button>';
+      }).join('') + '</div></div>';
+    });
+    const all = rows.every(([k]) => k in z.sel);
+    if (!z.done) h += '<button class="btn primary" data-act="dqcheck"' + (all ? '' : ' disabled') + '>Conferir</button>';
+    else {
+      const n = rows.filter(([k]) => z.sel[k] === want[k]).length;
+      h += '<p><b>' + (n === 4 ? '✅ Perfeito!' : n + ' de 4 certos') + '</b></p>' + drinkCard(d) + '<button class="btn primary" data-act="dqnext">Próxima bebida</button>';
+    }
+    const st = PS.dq || { n: 0, ok: 0 };
+    return h + '<p class="small muted">Montadas: ' + st.n + ' · perfeitas: ' + st.ok + '</p></div>';
+  }
   function renderDrinks() {
     if (!DR) return '<p class="muted">Receitas não encontradas (drinks.js).</p>';
-    const card = d => '<div class="panel dcard"><div class="dh"><b class="jp">' + esc(d.pos) + '</b>' + (d.sheet !== d.pos ? ' <span class="muted small">no papel: ' + esc(d.sheet) + (d.k && d.k !== d.sheet ? '（' + esc(d.k) + '）' : '') + '</span>' : '') + '</div><ol class="tight">' + d.steps.map(s => '<li>' + doseHtml(s) + '</li>').join('') + '</ol></div>';
-    const table = (t, title) => '<h3>' + title + '</h3><table class="dtab"><tr><th></th>' + t.cols.map(c => '<th>' + esc(c[0]) + '<div class="code">' + esc(c[1]) + '</div></th>').join('') + '</tr>' +
-      t.rows.map(r => '<tr><th class="jp">' + esc(r[0]) + '<div class="small muted">' + esc(r[1]) + '</div></th>' + r[2].map(v => '<td>' + doseHtml(v) + '</td>').join('') + '</tr>').join('') + '</table><p class="small muted">' + esc(t.note) + '</p>';
-    let h = '<div class="panel"><h2 style="margin-top:0">🍹 Drinks: como fazer</h2><p>Copiado do papel da geladeira. Doses em ml. Todo soft drink vai com gelo.</p>' +
-      '<label class="set">Modo treino: esconder as doses (toque para ver)<input type="checkbox" data-set="drinkQuiz"' + (SET.drinkQuiz ? ' checked' : '') + '></label>' +
-      '<h3>Códigos do papel (e do pedido)</h3><div class="codes">' + DR.codes.map(c => '<span class="chip"><b class="code">' + esc(c[0]) + '</b> ' + esc(c[1]) + ' · ' + esc(c[2]) + '</span>').join('') + '</div></div>';
-    h += '<div class="' + (SET.drinkQuiz ? 'dquiz' : '') + '">';
-    h += '<h2>Sours (サワー)</h2><p class="small muted">A linha 基本 do papel: a base de toda sour é <b>サワーベース 45 ml</b> (provavelmente a alavanca da direita para a frente; confirme).</p><div class="dgrid">' + DR.sours.map(card).join('') + '</div>';
-    h += '<h2>ハイ e coquetéis</h2><div class="dgrid">' + DR.hai.map(card).join('') + '</div>';
-    h += '<div class="panel">' + table(DR.shochu, '焼酎・梅酒 (shochu e licor de ume)') + '</div>';
-    h += '<div class="panel">' + table(DR.whisky, 'ウィスキー') + '</div>';
+    if (ui.dq) return dqHtml();
+    let h = '<div class="panel"><h2 style="margin-top:0">🍹 Drinks: como fazer</h2><p>Toda bebida segue a <b>mesma ordem</b>. Decore a ordem e, para cada bebida, só o que muda:</p>' +
+      '<ol class="flow"><li><span>1</span>Copo<small>①②③</small></li><li><span>2</span>Gelo<small>🧊 até a boca</small></li><li><span>3</span>Álcool<small>' + jigSvg(1, 0) + ' copinho, alavanca ou bico</small></li><li><span>4</span>Comple&shy;mento<small>soda, chá, suco</small></li><li><span>5</span>Servir</li></ol>' +
+      '<button class="btn primary" data-act="dqnext">🎯 Treinar: monte a bebida</button></div>';
+    h += '<div class="dvis">';
+    h += '<div class="panel"><h3 style="margin-top:0">Os 3 copos</h3>' + shelfSvg() + '<ul class="tight">' + DR.glasses.map(g => '<li><b class="gnum">' + GN[g.n] + '</b> ' + esc(g.where) + ': <b>' + esc(g.use) + '</b></li>').join('') + '</ul><p class="small muted">Desenho ilustrativo: o formato real pode ser outro. O que importa é a prateleira.</p></div>';
+    h += '<div class="panel"><h3 style="margin-top:0">A máquina: 3 alavancas</h3>' + leverSvg() + '<div class="levers">' + DR.levers.map(l => '<div class="lv"><b>' + esc(l.name) + '</b>' +
+      (l.b ? '<div>' + esc(l.a[1]) + ' → <b class="jp">' + esc(l.a[0]) + '</b></div><div>' + esc(l.b[1]) + ' → <b class="jp">' + esc(l.b[0]) + '</b></div>' : '<div><b class="jp">' + esc(l.a[0]) + '</b></div>') +
+      (l.check ? '<span class="badge warn">confirme</span>' : '') + '</div>').join('') + '</div><p class="small muted">A サワーベース é alcoólica: toda サワー tem álcool.</p></div>';
+    h += '<div class="panel"><h3 style="margin-top:0">O copinho medidor (em vez de decorar ml)</h3><div class="jigs">' +
+      '<div><span class="ji">' + jigSvg(1, 0) + '</span><span><b>lado grande cheio</b> = 45<br><span class="muted">a dose da maioria (焼酎, 梅酒, ハイ)</span></span></div>' +
+      '<div><span class="ji">' + jigSvg(0, 1) + '</span><span><b>lado pequeno cheio</b> = 30<br><span class="muted">alguns whiskies na ハイボール</span></span></div>' +
+      '<div><span class="ji">' + jigSvg(1, 0) + jigSvg(0, 1) + '</span><span><b>os dois lados</b> = 45+30<br><span class="muted">焼酎 / 梅酒 na ロック</span></span></div>' +
+      '<div><span class="ji">' + jigSvg(0, 1) + jigSvg(0, 1) + '</span><span><b>lado pequeno 2×</b> = 60 <span class="badge warn">confirme</span><br><span class="muted">三輪ハイ, whisky na ロック</span></span></div></div>' +
+      '<p class="small muted">O papel diz 45 e 30, então o copinho deve ter esses dois lados. Se ele tiver uma marca de 60, use a marca.</p></div>';
+    h += '<div class="panel"><h3 style="margin-top:0">Cerveja: 8 de cerveja, 2 de espuma</h3>' + beerSvg() + '<p class="small">Sem gelo. 生ビール no copo ②, alavanca do meio. 白穂乃香 no copo ①, alavanca da esquerda. グラス生ビール: o mesmo chope, num copo menor.</p></div>';
     h += '</div>';
-    h += '<div class="panel"><h3 style="margin-top:0">Cerveja</h3><ul class="tight">' + DR.beer.map(b => '<li><b class="jp">' + esc(b[0]) + '</b> <span class="muted">（' + esc(b[1]) + '）</span>: ' + esc(b[2]) + '</li>').join('') + '</ul><h3>Sem álcool</h3><p>' + esc(DR.soft) + '</p></div>';
+    h += '<label class="set">Modo treino: esconder as doses (toque para ver)<input type="checkbox" data-set="drinkQuiz"' + (SET.drinkQuiz ? ' checked' : '') + '></label>';
+    h += '<div class="' + (SET.drinkQuiz ? 'dquiz' : '') + '">';
+    DR.groups.forEach(([g, t]) => { h += '<h2>' + esc(t) + '</h2><div class="dgrid">' + DR.drinks.filter(d => d.group === g).map(drinkCard).join('') + '</div>'; });
+    const table = (t, title) => '<h3 style="margin-top:0">' + title + '</h3><table class="dtab"><tr><th></th>' + t.cols.map(c => '<th>' + esc(c[0]) + '<div class="code">' + esc(c[1]) + '</div></th>').join('') + '</tr>' +
+      t.rows.map(r => '<tr><th class="jp">' + esc(r[0]) + '<div class="small muted">' + esc(r[1]) + '</div></th>' + r[2].map(v => '<td>' + doseChip(v) + '</td>').join('') + '</tr>').join('') + '</table><p class="small muted">' + esc(t.note) + '</p>';
+    h += '<h2>Pedidos com ソ / 水 / R / 湯</h2><div class="panel"><p class="small">O cliente escolhe como quer: <span class="codes">' + DR.codes.map(c => '<span class="chip"><b class="code">' + esc(c[0]) + '</b> ' + esc(c[1]) + ' · ' + esc(c[2]) + '</span>').join('') + '</span></p>' +
+      '<p class="small">Mesma ordem de sempre: gelo → álcool no copinho → soda (ソ) ou água (水); na ロック, só gelo. Exceção: no 湯 não vai gelo e a água quente entra antes do álcool.</p>' + table(DR.shochu, '焼酎・梅酒 (shochu e licor de ume)') + '</div>';
+    h += '<div class="panel">' + table(DR.whisky, 'ウィスキー') + '</div>';
+    h += '</div><p class="small muted">' + esc(DR.bottle) + '</p>';
+    return h;
+  }
+
+  /* ---------- tela: molhos (pratinhos) ---------- */
+  const CD = window.COND || null;
+  const PL = {
+    round: { vb: '0 0 100 100', comp: [[50, 50, 31]], draw: '<circle cx="50" cy="50" r="46" class="pf"/><circle cx="50" cy="50" r="39" class="pr"/>' },
+    yaku: { vb: '0 0 100 100', comp: [[50, 50, 32]], draw: '<circle cx="50" cy="50" r="47" class="pf"/><circle cx="50" cy="50" r="42" class="pr"/><circle cx="50" cy="50" r="38" class="pr"/>' },
+    oval2: { vb: '0 0 160 100', comp: [[43, 50, 30], [117, 50, 30]], draw: '<ellipse cx="80" cy="50" rx="76" ry="46" class="pf"/><path d="M80 6 V94" class="pd"/>' },
+    megane: { vb: '0 0 170 100', comp: [[47, 50, 31], [123, 50, 31]], draw: '<circle cx="47" cy="50" r="44" class="pf"/><circle cx="123" cy="50" r="44" class="pf"/><rect x="80" y="38" width="10" height="24" class="pb"/>' },
+    rect3: { vb: '0 0 210 84', comp: [[38, 42, 27], [105, 42, 27], [172, 42, 27]], draw: '<rect x="4" y="4" width="202" height="76" rx="12" class="pf"/><path d="M71 8 V76 M139 8 V76" class="pd"/>' }
+  };
+  const BLOB = { 1: [[0, 0, .66]], 2: [[0, -.46, .44], [0, .46, .44]], 3: [[0, -.64, .34], [0, 0, .34], [0, .64, .34]], 4: [[-.42, -.42, .38], [.42, -.42, .38], [-.42, .42, .38], [.42, .42, .38]] };
+  function plateSvg(dk, parts, w) {
+    const D = CD.dishes[dk], P = PL[D.shape], vb = P.vb.split(' ').map(Number);
+    let s = '<svg class="plate" viewBox="' + P.vb + '" width="' + (w || 120) + '" height="' + Math.round((w || 120) * vb[3] / vb[2]) + '" role="img" aria-label="' + esc(D.t) + '">' + P.draw;
+    (parts || []).forEach((list, i) => {
+      const [cx, cy, R] = P.comp[i] || P.comp[0], L = BLOB[Math.min(list.length, 4)];
+      list.forEach((k, j) => {
+        const c = CD.sauces[k], [dx, dy, rf] = L[j], x = cx + dx * R, y = cy + dy * R, r = rf * R;
+        const fs = Math.min(r * .62, 1.9 * r / Math.max(2, [...c.s].length));
+        s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + c.c + '" stroke="rgba(0,0,0,.4)" stroke-width="1"/>';
+        if (c.grain) [[-.35, -.2], [.3, -.35], [.1, .3], [-.3, .35], [.4, .2]].forEach(([a, b]) => { s += '<circle cx="' + (x + a * r).toFixed(1) + '" cy="' + (y + b * r).toFixed(1) + '" r=".9" fill="#9aa"/>'; });
+        s += '<text x="' + x.toFixed(1) + '" y="' + (y + fs * .36).toFixed(1) + '" text-anchor="middle" font-size="' + fs.toFixed(1) + '" fill="' + c.ink + '">' + esc(c.s) + '</text>';
+      });
+    });
+    return s + '</svg>';
+  }
+  const dishFig = (dk, parts, w) => { const D = CD.dishes[dk]; return '<figure class="pfig">' + plateSvg(dk, parts, w) + '<figcaption><b class="jp">' + esc(D.t) + '</b>' + (D.k ? ' <span class="muted small">' + esc(D.k) + '</span>' : '') + '</figcaption></figure>'; };
+  const sauceName = k => { const c = CD.sauces[k]; return kanjiOf(c.t).length ? '<ruby>' + esc(c.t) + '<rt>' + esc(c.k) + '</rt></ruby>' : esc(c.t); };
+  const sauceChip = k => { const c = CD.sauces[k]; return '<span class="chip"><i class="dot" style="background:' + c.c + '"></i><b>' + sauceName(k) + '</b> <span class="muted">' + esc(c.pt) + '</span></span>'; };
+  const ruleSauces = r => [...new Set(r.parts.flat().concat((r.extra || []).flatMap(x => x.parts.flat())))];
+  const ruleDishes = r => [r.dish].concat((r.extra || []).map(x => x.dish));
+  const ruleSig = r => ruleDishes(r).slice().sort().join(',') + '/' + ruleSauces(r).slice().sort().join(',');
+  const ruleName = r => ruby(r.rb || r.name, true);
+  const plates = (r, big) => dishFig(r.dish, r.parts, r.dish === 'sanren' ? (big ? 210 : 150) : r.dish === 'megane' || r.dish === 'niren' ? (big ? 180 : 130) : (big ? 124 : 90)) +
+    (r.extra || []).map(x => '<span class="plus">+</span>' + dishFig(x.dish, x.parts, big ? 100 : 76)).join('');
+  // a composição em texto: 薬皿: おろし + ポン酢 · 小皿: からし + 醤油 ( | separa as divisões)
+  const compText = r => [{ dish: r.dish, parts: r.parts }].concat(r.extra || []).map(x => '<b class="jp">' + esc(CD.dishes[x.dish].t) + '</b>: ' + x.parts.map(p => p.map(k => '<span class="jp">' + esc(CD.sauces[k].t) + '</span>').join(' + ')).join(' <b class="sep">|</b> ')).join('<br>');
+  function condAnswer(r) {
+    let h = '<div class="cc-pl">' + plates(r, true) + '</div><div class="comp">' + compText(r) + '</div>';
+    (r.notes || []).forEach(n => { h += '<p class="small" style="margin:4px 0">👉 ' + esc(n) + '</p>'; });
+    if (r.note) h += '<p class="small" style="margin:4px 0">' + esc(r.note) + '</p>';
+    const fam = CD.families.find(f => f.rules.includes(r.id));
+    if (fam || r.hook) h += '<p class="hookp">🧠 ' + (fam ? fam.icon + ' <b>' + esc(fam.t) + '</b>' : '') + (r.hook ? '<br>' + esc(r.hook) : '') + '</p>';
+    if (r.say) h += '<div class="cc-say"><button class="btn sm" data-act="dsay" data-s="' + esc(r.say[0]) + '">🔊</button><span><b class="jp">' + esc(r.say[0]) + '</b>' + (r.en ? '<br><span class="small muted">EN: ' + esc(r.en) + '</span>' : '') + '</span></div>';
+    return h;
+  }
+  function condCard(r) {
+    let h = '<div class="panel ccard' + (r.check ? ' chk' : '') + '"><div class="cc-pl">' + plates(r, true) + '</div>';
+    h += '<div class="cc-nm"><b class="jp">' + ruleName(r) + '</b>' + (r.k ? ' <button class="btn sm" data-act="dsay" data-s="' + esc(r.name) + '" aria-label="ouvir">🔊</button>' : '') + ' <span class="muted small">' + esc(r.pt) + '</span></div>';
+    h += '<div class="comp small">' + compText(r) + '</div>' + (r.hook ? '<p class="hookp small">🧠 ' + esc(r.hook) + '</p>' : '');
+    (r.notes || []).forEach(n => { h += '<p class="small" style="margin:4px 0">👉 ' + esc(n) + '</p>'; });
+    if (r.note) h += '<p class="small" style="margin:4px 0">' + esc(r.note) + '</p>';
+    if (r.say) h += '<div class="cc-say"><button class="btn sm" data-act="dsay" data-s="' + esc(r.say[0]) + '">🔊</button><span><b class="jp">' + esc(r.say[0]) + '</b>' + (r.en ? '<br><span class="small muted">EN: ' + esc(r.en) + '</span>' : '') + '</span></div>';
+    if (r.pos && r.pos.length) h += '<details class="small"><summary class="muted">botões no caixa (' + r.pos.length + ')</summary>' + r.pos.map(l => '<span class="chip jp">' + esc(l) + '</span>').join('') + '</details>';
+    if (r.check) h += '<p class="small"><span class="badge warn">confirme</span> ' + esc(r.check) + '</p>';
+    return h + '</div>';
+  }
+  // "a lógica": as 3 famílias com os ganchos de memória e os pratinhos pequenos
+  function famHtml() {
+    return '<div class="panel"><h2 style="margin-top:0">🧠 Como decorar: a lógica</h2><p class="small">Não decore 10 coisas soltas. São 3 famílias, e dentro de cada uma só muda um detalhe:</p>' +
+      CD.families.map(f => '<div class="fam"><h3>' + f.icon + ' ' + esc(f.t) + '</h3><div class="fam-pl">' + f.rules.map(id => { const r = CD.rules.find(x => x.id === id); return '<div class="fam-it"><div class="cc-pl sm">' + plates(r, false) + '</div><b class="jp">' + ruleName(r) + '</b></div>'; }).join('') + '</div>' +
+        '<ul class="tight small">' + f.hooks.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>').join('') +
+      '<p class="small muted" style="margin-bottom:0">' + esc(CD.rule) + '</p></div>';
+  }
+
+  /* treino: rodada com todos os pratos; o que errar volta até acertar */
+  const condPool = () => CD.rules.filter(r => r.drill !== false);
+  function cdRound() { ui.cr = { queue: shuffle(condPool().map(r => r.id)), total: condPool().length, first: {}, last: {} }; cdNew(); }
+  function cdNew() {
+    const R = ui.cr;
+    if (R && !R.queue.length) { ui.cd = { end: true }; render(); return; }
+    const id = R ? R.queue[0] : pick(condPool().filter(r => !ui.cd || r.id !== ui.cd.id)).id;
+    const r = CD.rules.find(x => x.id === id);
+    // alterna o tipo: "monte o pratinho" e "de qual prato é este pratinho?"
+    const type = R && R.last[id] ? (R.last[id] === 'build' ? 'which' : 'build') : (Math.random() < .5 ? 'build' : 'which');
+    if (R) R.last[id] = type;
+    const z = { id, type, dishes: [], sauces: [], done: false };
+    if (type === 'which') {
+      // as opções erradas vêm primeiro da mesma família (mais difícil), depois das outras
+      const fam = CD.families.find(f => f.rules.includes(id)), other = condPool().filter(x => ruleSig(x) !== ruleSig(r));
+      const near = shuffle(other.filter(x => fam && fam.rules.includes(x.id))), far = shuffle(other.filter(x => !(fam && fam.rules.includes(x.id))));
+      z.opts = shuffle([id].concat(near.concat(far).slice(0, 3).map(x => x.id)));
+    }
+    ui.cd = z; render();
+    if (type === 'build' && r.k) posSpeak([r.name]);
+  }
+  function cdAfter(ok) {
+    const st = PS.cd = Object.assign({ n: 0, ok: 0 }, PS.cd || {}); st.n++; if (ok) st.ok++; save();
+    const R = ui.cr, id = ui.cd.id; if (!R) return;
+    if (!(id in R.first)) R.first[id] = ok;
+    R.queue = R.queue.filter(x => x !== id);
+    if (!ok) R.queue.splice(Math.min(2, R.queue.length), 0, id);
+  }
+  function cdTop() {
+    const R = ui.cr;
+    let h = '<div class="dq-head"><div class="dq-prog">';
+    if (R) { const done = R.total - new Set(R.queue).size; h += '<div class="bar"><i style="width:' + Math.round(100 * done / R.total) + '%"></i></div><span class="small muted">' + done + ' de ' + R.total + ' decorados</span>'; }
+    return h + '</div><button class="btn sm" data-act="cdquit">Fechar</button></div>';
+  }
+  function cdHtml() {
+    const z = ui.cd;
+    if (z.end) {
+      const R = ui.cr, first = Object.keys(R.first).filter(k => R.first[k]).length, miss = Object.keys(R.first).filter(k => !R.first[k]);
+      return '<div class="panel dq"><h2 style="margin-top:0">🎉 Rodada completa</h2><p>Você acertou os ' + R.total + ' pratos. De primeira: <b>' + first + ' de ' + R.total + '</b>.</p>' +
+        (miss.length ? '<p class="small">Revise estes:</p><div class="cgrid">' + miss.map(id => condCard(CD.rules.find(x => x.id === id))).join('') + '</div>' : '<p>⭐ Sem nenhum erro!</p>') +
+        '<div class="drills"><button class="btn primary" data-act="cdround">Nova rodada</button><button class="btn" data-act="deck" data-f="cat:cond">🎴 Flashcards (repetição espaçada)</button><button class="btn" data-act="cdquit">Voltar</button></div></div>';
+    }
+    const r = CD.rules.find(x => x.id === z.id);
+    let h = '<div class="panel dq">' + cdTop();
+    if (z.type === 'which') {
+      h += '<div class="small muted">De qual prato é este pratinho?</div><div class="cc-pl">' + plates(r, true) + '</div><div class="dq-opts dq-big">' + z.opts.map(id => {
+        const o = CD.rules.find(x => x.id === id), right = ruleSig(o) === ruleSig(r), on = z.pick === id;
+        return '<button class="dq-o' + (z.done && right ? ' ok' : '') + (z.done && on && !right ? ' no' : '') + '" data-act="cdwhich" data-v="' + id + '"' + (z.done ? ' disabled' : '') + '><b>' + ruleName(o) + '</b></button>';
+      }).join('') + '</div>';
+      if (z.done) h += '<p><b>' + (z.ok ? '✅ Certo!' : '❌ É ' + esc(r.name)) + '</b></p><div class="comp">' + compText(r) + '</div>' + (r.hook ? '<p class="hookp">🧠 ' + esc(r.hook) + '</p>' : '') + '<button class="btn primary" data-act="cdnext">Próximo</button>';
+    } else {
+      const wd = ruleDishes(r), ws = ruleSauces(r);
+      const cls = (on, right) => (on ? ' on' : '') + (z.done && right ? ' ok' : '') + (z.done && on && !right ? ' no' : '') + (z.done && right && !on ? ' miss' : '');
+      h += '<div class="small muted">Monte o pratinho de</div><div class="dq-title"><b class="jp dq-name">' + ruleName(r) + '</b>' + (r.k ? '<button class="btn sm" data-act="dsay" data-s="' + esc(r.name) + '">🔊</button>' : '') + '</div><div class="small muted">' + esc(r.pt) + '</div>';
+      h += '<div class="dq-row"><span class="dq-k">Pratinho</span><div class="dq-opts">' + Object.keys(CD.dishes).map(k => '<button class="dq-o' + cls(z.dishes.includes(k), wd.includes(k)) + '" data-act="cdpick" data-g="dishes" data-v="' + k + '"' + (z.done ? ' disabled' : '') + '>' + plateSvg(k, [], 34) + esc(CD.dishes[k].t) + '</button>').join('') + '</div></div>';
+      h += '<div class="dq-row"><span class="dq-k">O que vai</span><div class="dq-opts">' + Object.keys(CD.sauces).map(k => '<button class="dq-o' + cls(z.sauces.includes(k), ws.includes(k)) + '" data-act="cdpick" data-g="sauces" data-v="' + k + '"' + (z.done ? ' disabled' : '') + '><i class="dot" style="background:' + CD.sauces[k].c + '"></i>' + sauceName(k) + '</button>').join('') + '</div></div>';
+      h += '<p class="small muted">Pode marcar mais de um. Alguns pratos levam dois pratinhos.</p>';
+      if (!z.done) h += '<button class="btn primary" data-act="cdcheck"' + (z.dishes.length && z.sauces.length ? '' : ' disabled') + '>Conferir</button>';
+      else h += '<p><b>' + (z.ok ? '✅ Certo!' : '❌ Veja o certo:') + '</b> <span class="small muted">verde = certo, vermelho = sobrou, tracejado = faltou</span></p>' + condCard(r) + '<button class="btn primary" data-act="cdnext">Próximo</button>';
+    }
+    const st = PS.cd || { n: 0, ok: 0 };
+    return h + '<p class="small muted">Total de treinos: ' + st.n + ' · certos: ' + st.ok + '</p></div>';
+  }
+  function renderCond() {
+    if (!CD) return '<p class="muted">Dados não encontrados (cond.js).</p>';
+    if (ui.cd) return cdHtml();
+    const fc = cards.filter(c => c.cond), due = dueCards(fc).length, seen = fc.filter(c => S[c.id] && S[c.id].r > 0).length;
+    let h = '<div class="panel"><h2 style="margin-top:0">🥢 Molhos: os pratinhos dos pratos</h2><p>Alguns pratos vão para a mesa com um pratinho de molho ou tempero. A folha da loja diz <b>qual pratinho</b> e <b>o que vai em cada divisão</b>.</p>' +
+      '<div class="drills"><button class="btn primary" data-act="cdround">🎯 Rodada: decorar os ' + condPool().length + ' pratos</button><button class="btn" data-act="deck" data-f="cat:cond">🎴 Flashcards · ' + due + ' p/ revisar · ' + seen + '/' + fc.length + ' vistos</button></div>' +
+      '<p class="small muted">Na rodada, o que você errar volta depois de 2 pratos, até acertar todos. Os flashcards entram nas revisões do Estudar e voltam nos dias certos para não esquecer.</p>' +
+      '<h3>Ao pôr na mesa</h3>' + CD.phrases.map(p => '<div class="cc-say"><button class="btn sm" data-act="dsay" data-s="' + esc(p[0]) + '">🔊</button><span><b class="jp">' + esc(p[0]) + '</b><br><span class="small muted">' + esc(p[1]) + ' · ' + esc(p[2]) + '</span></span></div>').join('') +
+      '<p class="small muted">' + esc(CD.en) + '</p></div>';
+    h += famHtml();
+    h += '<div class="panel"><h3 style="margin-top:0">Os pratinhos</h3><div class="cc-legend">' + Object.keys(CD.dishes).map(k => '<div>' + dishFig(k, [], k === 'rect3' ? 120 : k === 'kozara' || k === 'yaku' ? 64 : 100) + '<div class="small muted">' + esc(CD.dishes[k].pt) + '</div></div>').join('') + '</div>' +
+      '<h3>O que vai neles</h3><div>' + Object.keys(CD.sauces).map(sauceChip).join('') + '</div></div>';
+    h += '<h2>Prato por prato</h2><div class="cgrid">' + CD.rules.map(condCard).join('') + '</div>';
     return h;
   }
 
@@ -857,7 +1155,7 @@
   function applyTheme() { const r = document.documentElement; if (SET.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', SET.theme); }
   function render() {
     document.body.dataset.tab = ui.tab;
-    const v = ui.tab === 'study' ? renderStudy() : ui.tab === 'prep' ? renderPrep() : ui.tab === 'pos' ? renderPos() : ui.tab === 'drinks' ? renderDrinks() : ui.tab === 'menu' ? renderMenu() : ui.tab === 'kanji' ? renderKanji() : ui.tab === 'quiz' ? renderQuiz() : renderMore();
+    const v = ui.tab === 'study' ? renderStudy() : ui.tab === 'prep' ? renderPrep() : ui.tab === 'pos' ? renderPos() : ui.tab === 'drinks' ? renderDrinks() : ui.tab === 'cond' ? renderCond() : ui.tab === 'menu' ? renderMenu() : ui.tab === 'kanji' ? renderKanji() : ui.tab === 'quiz' ? renderQuiz() : renderMore();
     $('#view').innerHTML = v;
     document.body.classList.toggle('wide', ui.tab === 'pos' && !!ui.pos && !ui.pos.res);
     if (ui.tab === 'pos' && ui.pos) {
@@ -880,7 +1178,7 @@
   const csvc = s => '"' + String(s).replace(/"/g, '""') + '"';
   function vocabList(onlyVocab) {
     const seen = new Set(), out = [];
-    cards.filter(c => !c.kanji && (!onlyVocab || c.kind === 'vocab')).forEach(c => {
+    cards.filter(c => !c.kanji && !c.cond && (!onlyVocab || c.kind === 'vocab')).forEach(c => {
       const p = plain(c.jp);
       if (/[A-Za-z0-9（）()\s、〜]/.test(p) || seen.has(p)) return;
       seen.add(p); out.push(c);
@@ -891,7 +1189,7 @@
   /* ---------- eventos ---------- */
   const ACT = {
     tab(t) { ui.tab = t.dataset.tab; closeAll(); window.scrollTo(0, 0); render(); },
-    deck(t) { startSession(t.dataset.f); window.scrollTo(0, 0); },
+    deck(t) { if (ui.tab === 'cond') { ui.cd = null; ui.cr = null; } startSession(t.dataset.f); window.scrollTo(0, 0); },
     reveal() { if (ui.sess) { ui.sess.show = true; render(); } },
     grade(t) { grade(+t.dataset.g); },
     quit() { ui.sess = null; render(); },
@@ -952,6 +1250,31 @@
       z.res = posEvaluate(z); render(); window.scrollTo(0, 0);
     },
     dose(t) { t.classList.toggle('shown'); },
+    dsay(t) { ctxGet(); posSpeak([t.dataset.s]); },
+    dqnext() { ctxGet(); dqNew(); window.scrollTo(0, 0); },
+    dqquit() { ui.dq = null; render(); },
+    dqpick(t) { const z = ui.dq; if (!z || z.done) return; const k = t.dataset.k, v = t.dataset.v; z.sel[k] = k === 'glass' ? +v : k === 'ice' ? v === 'true' : v; render(); },
+    cdnext() { ctxGet(); cdNew(); window.scrollTo(0, 0); },
+    cdround() { ctxGet(); cdRound(); window.scrollTo(0, 0); },
+    cdquit() { ui.cd = null; ui.cr = null; render(); },
+    cdwhich(t) {
+      const z = ui.cd; if (!z || z.done) return;
+      const r = CD.rules.find(x => x.id === z.id), o = CD.rules.find(x => x.id === t.dataset.v);
+      z.pick = o.id; z.done = true; z.ok = ruleSig(o) === ruleSig(r); cdAfter(z.ok); render();
+    },
+    cdpick(t) { const z = ui.cd; if (!z || z.done) return; const a = z[t.dataset.g], v = t.dataset.v, i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); render(); },
+    cdcheck() {
+      const z = ui.cd; if (!z || z.done) return;
+      const r = CD.rules.find(x => x.id === z.id), same = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+      z.done = true; z.ok = same(z.dishes, ruleDishes(r)) && same(z.sauces, ruleSauces(r));
+      cdAfter(z.ok); render(); if (r.say) posSpeak([r.say[0]]);
+    },
+    dqcheck() {
+      const z = ui.dq, d = DR.drinks.find(x => x.id === z.id); if (!z || z.done) return;
+      z.done = true; const st = PS.dq = Object.assign({ n: 0, ok: 0 }, PS.dq || {}); st.n++;
+      if (z.sel.glass === d.glass && z.sel.ice === d.ice && z.sel.alc === d.alc && z.sel.mix === d.mix) st.ok++;
+      save(); render();
+    },
     listen(t) { ui.tab = 'quiz'; ui.qsel = { f: t.dataset.f, m: 'listen' }; window.scrollTo(0, 0); if (!startQuiz(t.dataset.f, 'listen')) render(); },
     pchk(t) { const k = t.dataset.k; if (PS.c[k]) delete PS.c[k]; else PS.c[k] = dateStr(); save(); render(); },
     pmod(t) {
@@ -1036,5 +1359,5 @@
   if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
   }
-  window.YM = { cards, byId, toRomaji, ruby, plain, reading, nextState, S: () => S, AUD };
+  window.YM = { cards, byId, toRomaji, ruby, plain, reading, nextState, S: () => S, AUD, posNewOrder, posSeq, POSK };
 })();
